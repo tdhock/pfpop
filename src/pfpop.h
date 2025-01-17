@@ -6,7 +6,8 @@
 #define ERROR_WEIGHT_NOT_FINITE 30
 #define ERROR_WEIGHT_NOT_POSITIVE 31
 
-#include <list> //TODO MAP
+#include <map>
+#include <list>
 
 int pfpop
 (const double*, const double, const double*, const int, 
@@ -21,50 +22,59 @@ int decode
  double *seg_param_ptr,
  const int N_segs);
 
-class LinearPiece {
+class LinearCoefsForList {
  public:
   double Linear;
   double Constant;
   double min_angle_param;
   double max_angle_param;
-  int data_i;
   double prev_angle_param;
-  LinearPiece();
+  int data_i;
+  LinearCoefsForList();
   double Loss(double);
-  LinearPiece(double li, double co, double m, double M);
-  LinearPiece
+  LinearCoefsForList(double li, double co, double m, double M);
+  LinearCoefsForList
     (double li, double co, double m, double M, int i, double);
   void print();
 };
 
-typedef std::list<LinearPiece> L1LossPieceList;
+class LinearCoefsForMap {
+ public:
+  double Linear;
+  double Constant;
+  int data_i;
+  LinearCoefsForMap();
+};
 
-class PiecewiseLinearLossFun;
+typedef std::list<LinearCoefsForList> L1LossList;
+typedef std::map<double, LinearCoefsForMap> L1LossMap;
 
-typedef void (PiecewiseLinearLossFun::*push_fun_ptr)
-(PiecewiseLinearLossFun*,
- PiecewiseLinearLossFun*,
- L1LossPieceList::iterator,
- L1LossPieceList::iterator,
+class L1LossListFun;
+
+typedef void (L1LossListFun::*push_fun_ptr)
+(L1LossListFun*,
+ L1LossListFun*,
+ L1LossList::iterator,
+ L1LossList::iterator,
  int);
 
-class PiecewiseLinearLossFun {
+class L1LossListFun {
  public:
-  L1LossPieceList piece_list;
+  L1LossList piece_list;
   double weight;
-  PiecewiseLinearLossFun();
-  void push_sum_pieces(PiecewiseLinearLossFun*, PiecewiseLinearLossFun*, L1LossPieceList::iterator, L1LossPieceList::iterator, int);
-  void push_min_pieces(PiecewiseLinearLossFun*, PiecewiseLinearLossFun*, L1LossPieceList::iterator, L1LossPieceList::iterator, int);
-  void while_piece_pairs(PiecewiseLinearLossFun*, PiecewiseLinearLossFun*, push_fun_ptr, int);
+  L1LossListFun();
+  void push_sum_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
+  void push_min_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
+  void while_piece_pairs(L1LossListFun*, L1LossListFun*, push_fun_ptr, int);
   void emplace_piece(double,double,double,double);
   void emplace_piece(double,double,double,double,int,double);
-  void enlarge_last_or_emplace(L1LossPieceList::iterator,double,double);
+  void enlarge_last_or_emplace(L1LossList::iterator,double,double);
   void enlarge_last_or_emplace(double,double,double,double);
   void enlarge_last_or_emplace(double,double,double,double,int,double);
   void init(double, double);
-  void set_to_min_of_one(PiecewiseLinearLossFun *, int);
-  void set_to_min_of_two(PiecewiseLinearLossFun *, PiecewiseLinearLossFun *, int);
-  void set_to_sum_of(PiecewiseLinearLossFun *, PiecewiseLinearLossFun *, int);
+  void set_to_min_of_one(L1LossListFun *, int);
+  void set_to_min_of_two(L1LossListFun *, L1LossListFun *, int);
+  void set_to_sum_of(L1LossListFun *, L1LossListFun *, int);
   void add(double Constant);
   void multiply(double);
   void print();

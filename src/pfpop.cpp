@@ -6,7 +6,6 @@
 
 #include "pfpop.h"
 
-#include <list>
 #include <math.h>
 #include <stdio.h>
 #include <R.h>
@@ -16,7 +15,7 @@
 
 #define ABS(x) ((x)<0 ? -(x) : (x))
 
-LinearPiece::LinearPiece
+LinearCoefsForList::LinearCoefsForList
 (double li, double co, double m, double M, int i, double prev){
   Linear = li;
   Constant = co;
@@ -26,7 +25,7 @@ LinearPiece::LinearPiece
   prev_angle_param = prev;
 }
 
-LinearPiece::LinearPiece
+LinearCoefsForList::LinearCoefsForList
 (double li, double co, double m, double M){
   Linear = li;
   Constant = co;
@@ -36,19 +35,19 @@ LinearPiece::LinearPiece
   prev_angle_param = INFINITY;
 }
 
-LinearPiece::LinearPiece(){
+LinearCoefsForList::LinearCoefsForList(){
 }
 
-double LinearPiece::Loss(double angle_param){
+double LinearCoefsForList::Loss(double angle_param){
   return Linear*angle_param + Constant;
 }
 
-PiecewiseLinearLossFun::PiecewiseLinearLossFun(){
+L1LossListFun::L1LossListFun(){
   weight = 1;
 }
 
-void PiecewiseLinearLossFun::set_to_min_of_one
-(PiecewiseLinearLossFun *input, int verbose){
+void L1LossListFun::set_to_min_of_one
+(L1LossListFun *input, int verbose){
   double best_loss = INFINITY,
     best_angle_param = INFINITY,
     prev_angle_param = INFINITY;
@@ -58,11 +57,11 @@ void PiecewiseLinearLossFun::set_to_min_of_one
   piece_list.emplace_front(0, best_loss, 0, MAX_ANGLE, PREV_NOT_SET, best_angle_param);
 }
 
-void PiecewiseLinearLossFun::push_sum_pieces
-(PiecewiseLinearLossFun *fun1,
- PiecewiseLinearLossFun *fun2,
- L1LossPieceList::iterator it1,
- L1LossPieceList::iterator it2,
+void L1LossListFun::push_sum_pieces
+(L1LossListFun *fun1,
+ L1LossListFun *fun2,
+ L1LossList::iterator it1,
+ L1LossList::iterator it2,
  int verbose){
   double min_angle_param =
     (it1->min_angle_param < it2->min_angle_param) ?
@@ -75,11 +74,11 @@ void PiecewiseLinearLossFun::push_sum_pieces
      min_angle_param, max_angle_param, it2->data_i, it2->prev_angle_param);
 }
 
-void PiecewiseLinearLossFun::push_min_pieces
-(PiecewiseLinearLossFun *fun1,
- PiecewiseLinearLossFun *fun2,
- L1LossPieceList::iterator it1,
- L1LossPieceList::iterator it2,
+void L1LossListFun::push_min_pieces
+(L1LossListFun *fun1,
+ L1LossListFun *fun2,
+ L1LossList::iterator it1,
+ L1LossList::iterator it2,
  int verbose){
   double min_angle_param =
     (it1->min_angle_param < it2->min_angle_param) ?
@@ -136,26 +135,26 @@ void PiecewiseLinearLossFun::push_min_pieces
   }
 }
 
-void PiecewiseLinearLossFun::set_to_min_of_two
-(PiecewiseLinearLossFun *fun1,
- PiecewiseLinearLossFun *fun2,
+void L1LossListFun::set_to_min_of_two
+(L1LossListFun *fun1,
+ L1LossListFun *fun2,
  int verbose){
-  while_piece_pairs(fun1, fun2, &PiecewiseLinearLossFun::push_min_pieces, verbose);
+  while_piece_pairs(fun1, fun2, &L1LossListFun::push_min_pieces, verbose);
 }
 
-void PiecewiseLinearLossFun::set_to_sum_of
-(PiecewiseLinearLossFun *fun1,
- PiecewiseLinearLossFun *fun2,
+void L1LossListFun::set_to_sum_of
+(L1LossListFun *fun1,
+ L1LossListFun *fun2,
  int verbose){
-  while_piece_pairs(fun1, fun2, &PiecewiseLinearLossFun::push_sum_pieces, verbose);
+  while_piece_pairs(fun1, fun2, &L1LossListFun::push_sum_pieces, verbose);
 }
 
-void PiecewiseLinearLossFun::while_piece_pairs
-(PiecewiseLinearLossFun *fun1,
- PiecewiseLinearLossFun *fun2,
+void L1LossListFun::while_piece_pairs
+(L1LossListFun *fun1,
+ L1LossListFun *fun2,
  push_fun_ptr push_pieces,
  int verbose){
-  L1LossPieceList::iterator
+  L1LossList::iterator
     it1 = fun1->piece_list.begin(),
     it2 = fun2->piece_list.begin();
   piece_list.clear();
@@ -172,31 +171,31 @@ void PiecewiseLinearLossFun::while_piece_pairs
   }
 }
 
-void PiecewiseLinearLossFun::add(double Constant){
-  L1LossPieceList::iterator it;
+void L1LossListFun::add(double Constant){
+  L1LossList::iterator it;
   for(it=piece_list.begin(); it != piece_list.end(); it++){
     it->Constant += Constant;
   }
 }
 
-void PiecewiseLinearLossFun::multiply(double x){
-  L1LossPieceList::iterator it;
+void L1LossListFun::multiply(double x){
+  L1LossList::iterator it;
   for(it=piece_list.begin(); it != piece_list.end(); it++){
     it->Linear *= x;
     it->Constant *= x;
   }
 }
 
-void PiecewiseLinearLossFun::set_prev_seg_end(int prev_seg_end){
-  L1LossPieceList::iterator it;
+void L1LossListFun::set_prev_seg_end(int prev_seg_end){
+  L1LossList::iterator it;
   for(it=piece_list.begin(); it != piece_list.end(); it++){
     it->data_i = prev_seg_end;
   }
 }
 
-void PiecewiseLinearLossFun::findMean
+void L1LossListFun::findMean
 (double angle_param, int *seg_end, double *prev_angle_param){
-  L1LossPieceList::iterator it;
+  L1LossList::iterator it;
   for(it=piece_list.begin(); it != piece_list.end(); it++){
     if(it->min_angle_param <= angle_param && angle_param <= it->max_angle_param){
       *seg_end = it->data_i;
@@ -206,8 +205,8 @@ void PiecewiseLinearLossFun::findMean
   }
 }
 
-void PiecewiseLinearLossFun::print(){
-  L1LossPieceList::iterator it;
+void L1LossListFun::print(){
+  L1LossList::iterator it;
   Rprintf("%5s %5s %5s %5s %5s %s\n",
 	  "Linear", "Constant",
 	  "min_angle_param", "max_angle_param",
@@ -217,14 +216,14 @@ void PiecewiseLinearLossFun::print(){
   }
 }
 
-void LinearPiece::print(){
+void LinearCoefsForList::print(){
   Rprintf("%.20e %.20e %15f %15f %15f %d\n",
 	 Linear, Constant,
 	 min_angle_param, max_angle_param,
 	 prev_angle_param, data_i);
 }
 
-void PiecewiseLinearLossFun::emplace_piece
+void L1LossListFun::emplace_piece
 (double Linear, double Constant,
  double min_angle_param, double max_angle_param){
   piece_list.emplace_back
@@ -232,7 +231,7 @@ void PiecewiseLinearLossFun::emplace_piece
      min_angle_param, max_angle_param);
 }
 
-void PiecewiseLinearLossFun::emplace_piece
+void L1LossListFun::emplace_piece
 (double Linear, double Constant,
  double min_angle_param, double max_angle_param,
  int data_i, double prev_angle_param){
@@ -242,11 +241,11 @@ void PiecewiseLinearLossFun::emplace_piece
      data_i, prev_angle_param);
 }
 
-void PiecewiseLinearLossFun::enlarge_last_or_emplace
+void L1LossListFun::enlarge_last_or_emplace
 (double Linear, double Constant,
  double min_angle_param, double max_angle_param,
  int data_i, double prev_angle_param){
-  L1LossPieceList::iterator it=piece_list.end();
+  L1LossList::iterator it=piece_list.end();
   if(it!=piece_list.begin()){
     it--;
     if(it->Linear == Linear && it->Constant == Constant &&
@@ -261,7 +260,7 @@ void PiecewiseLinearLossFun::enlarge_last_or_emplace
      data_i, prev_angle_param);
 }
 
-void PiecewiseLinearLossFun::enlarge_last_or_emplace
+void L1LossListFun::enlarge_last_or_emplace
 (double Linear, double Constant,
  double min_angle_param, double max_angle_param){
   enlarge_last_or_emplace
@@ -269,8 +268,8 @@ void PiecewiseLinearLossFun::enlarge_last_or_emplace
      PREV_NOT_SET, INFINITY);
 }
 
-void PiecewiseLinearLossFun::enlarge_last_or_emplace
-(L1LossPieceList::iterator it,
+void L1LossListFun::enlarge_last_or_emplace
+(L1LossList::iterator it,
  double min_angle_param, double max_angle_param){
   enlarge_last_or_emplace
     (it->Linear, it->Constant,
@@ -278,7 +277,7 @@ void PiecewiseLinearLossFun::enlarge_last_or_emplace
      it->data_i, it->prev_angle_param);
 }
 
-void PiecewiseLinearLossFun::init
+void L1LossListFun::init
 (double angle, double weight_){
   weight = weight_;
   piece_list.clear();
@@ -299,13 +298,13 @@ void PiecewiseLinearLossFun::init
   }
 }
 
-void PiecewiseLinearLossFun::Minimize
+void L1LossListFun::Minimize
 (double *best_loss,
  double *best_angle_param,
  int *data_i){
   *best_loss = INFINITY;
   for
-    (L1LossPieceList::iterator it = piece_list.begin();
+    (L1LossList::iterator it = piece_list.begin();
      it != piece_list.end();
      it ++){
     double it_angle_param =
@@ -336,7 +335,7 @@ int pfpop
   }else if(penalty < 0){
     return ERROR_PENALTY_NEGATIVE;
   }
-  PiecewiseLinearLossFun dist_fun_i, cost_up_to_i, cost_up_to_prev, cost_of_change, min_term;
+  L1LossListFun dist_fun_i, cost_up_to_i, cost_up_to_prev, cost_of_change, min_term;
   int verbose=0;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
   double total_intervals = 0.0, max_intervals = 0.0;
