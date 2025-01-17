@@ -2,8 +2,10 @@ Package: pfpop
 Type: Package
 Title: Piecewise Functional Pruning Optimal Partitioning
 Version: 2025.1.17
-Author: Toby Dylan Hocking
-Maintainer: Toby Dylan Hocking <toby.hocking@r-project.org>
+Authors@R: person(given = c("Toby", "Dylan"),
+                  family = "Hocking",
+                  role = c("aut", "cre"),
+                  email = "toby.hocking@r-project.org")
 Description: Implementation of
  Functional Pruning Optimal Partitioning
  for losses that are defined using a piecewise function for each data point.
