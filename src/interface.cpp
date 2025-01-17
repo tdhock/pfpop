@@ -63,5 +63,6 @@ Rcpp::List pfpop_interface
      ("iterations", Rcpp::DataFrame::create
       (Rcpp::Named("change", best_change_vec),
        Rcpp::Named("cost", best_cost_vec),
-       Rcpp::Named("param", best_param_vec))));
+       Rcpp::Named("param", best_param_vec),
+       Rcpp::Named("pieces", num_pieces_vec))));
 }
