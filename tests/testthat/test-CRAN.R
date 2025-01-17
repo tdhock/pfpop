@@ -25,3 +25,8 @@ test_that("params for reasonable penalties", {
   (result <- pfpop::pfpop(angle.vec, 1000))
   expect_equal(nrow(result$segments),1)
 })
+test_that("pieces disappear", {
+  fit <- pfpop::pfpop(c(0,180,0,180),Inf)
+  expect_equal(fit$iterations$cost, c(0,90,60,90))
+  expect_equal(fit$iterations$pieces, c(2,1,2,1))
+})
