@@ -1,0 +1,3 @@
+useDynLib(pfpop)
+export(pfpop)
+importFrom(Rcpp, evalCpp)
