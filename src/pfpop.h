@@ -10,7 +10,7 @@
 
 int pfpop
 (const double*, const double, const double*, const int, 
- int*, double*, double*, int*);
+ int*, double*, double*, int*, int*);
 int decode
 (const int *best_change_ptr,
  const double *best_cost_ptr,

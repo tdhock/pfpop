@@ -327,7 +327,8 @@ int pfpop
  int *best_change_ptr,
  double *best_cost_ptr,
  double *best_param_ptr,
- int *best_N_segs_ptr){
+ int *best_N_segs_ptr,
+ int *num_pieces_ptr){
   if(penalty == INFINITY){
     //ok.
   }else if(!std::isfinite(penalty)){
@@ -385,10 +386,7 @@ int pfpop
     }
     cost_up_to_i.multiply(1/cum_weight_i);
     cum_weight_prev_i = cum_weight_i;
-    total_intervals += cost_up_to_i.piece_list.size();
-    if(max_intervals < cost_up_to_i.piece_list.size()){
-      max_intervals = cost_up_to_i.piece_list.size();
-    }
+    num_pieces_ptr[data_i] = cost_up_to_i.piece_list.size();
     cost_up_to_prev = cost_up_to_i;
     cost_up_to_i.Minimize
       (best_cost_ptr+data_i,

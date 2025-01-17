@@ -17,6 +17,7 @@ Rcpp::List pfpop_interface
   Rcpp::NumericVector best_cost_vec(N_data);
   Rcpp::NumericVector best_param_vec(N_data);
   Rcpp::IntegerVector best_N_segs(1);
+  Rcpp::IntegerVector num_pieces_vec(N_data);
   int status = pfpop
     (&data_vec[0],
      penalty,
@@ -25,7 +26,8 @@ Rcpp::List pfpop_interface
      &best_change_vec[0],
      &best_cost_vec[0],
      &best_param_vec[0],
-     &best_N_segs[0]);
+     &best_N_segs[0],
+     &num_pieces_vec[0]);
   if(status==ERROR_PENALTY_NEGATIVE || status==ERROR_PENALTY_NOT_FINITE){
     Rcpp::stop("penalty=%f must be non-negative", penalty);
   }

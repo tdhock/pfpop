@@ -1,0 +1,4 @@
+.dir-locals.el
+.github
+README.org
+build.sh
