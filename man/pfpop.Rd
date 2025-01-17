@@ -12,8 +12,8 @@
 pfpop(data_vec, penalty, weight_vec = rep(1, length(data_vec)))
 }
 \arguments{
-  \item{data_vec}{
-    Numeric vector of data to segment.
+  \item{degrees_vec}{
+    Numeric vector of data to segment, degrees in [0,360).
 }
   \item{penalty}{
     non-negative penalty, possibly Inf.

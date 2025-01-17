@@ -320,7 +320,7 @@ void PiecewiseLinearLossFun::Minimize
 }
 
 int pfpop
-(const double *data_ptr,
+(const double *degrees_ptr,
  const double penalty,
  const double *weight_ptr,
  const int N_data,
@@ -341,7 +341,7 @@ int pfpop
   double cum_weight_i = 0, cum_weight_prev_i = 0;
   double total_intervals = 0.0, max_intervals = 0.0;
   for(int data_i=0; data_i<N_data; data_i++){
-    double angle = data_ptr[data_i];
+    double angle = degrees_ptr[data_i];
     if(!std::isfinite(angle)){
       return ERROR_DATA_NOT_FINITE;
     }

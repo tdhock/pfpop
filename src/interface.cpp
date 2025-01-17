@@ -3,15 +3,15 @@
 
 // [[Rcpp::export]]
 Rcpp::List pfpop_interface
-(const Rcpp::NumericVector data_vec,
+(const Rcpp::NumericVector degrees_vec,
  const double penalty,
  const Rcpp::NumericVector weight_vec){
-  int N_data = data_vec.length();
+  int N_data = degrees_vec.length();
   if(N_data < 1){
-    Rcpp::stop("data_vec length must be one or more");
+    Rcpp::stop("degrees_vec length must be one or more");
   }
   if(N_data != weight_vec.length()){
-    Rcpp::stop("data_vec and weight_vec lengths must be equal");
+    Rcpp::stop("degrees_vec and weight_vec lengths must be equal");
   }
   Rcpp::IntegerVector best_change_vec(N_data);
   Rcpp::NumericVector best_cost_vec(N_data);
@@ -19,7 +19,7 @@ Rcpp::List pfpop_interface
   Rcpp::IntegerVector best_N_segs(1);
   Rcpp::IntegerVector num_pieces_vec(N_data);
   int status = pfpop
-    (&data_vec[0],
+    (&degrees_vec[0],
      penalty,
      &weight_vec[0],
      N_data,
