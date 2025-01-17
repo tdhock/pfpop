@@ -1,0 +1,9 @@
+pfpop: Piecewise Functional Pruning Optimal Partitioning
+
+This is an R package for change-point detection using piecewise loss
+functions (L1, geodesic, etc).
+
+** Related work
+
+pfpop uses store in memory, and is forked from [[https://github.com/tdhock/geodesichange][geodesichange]], which
+uses storage on disk.
