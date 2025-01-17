@@ -9,7 +9,7 @@
   sequence, and a penalty.
 }
 \usage{
-pfpop(data_vec, penalty, weight_vec = rep(1, length(data_vec)))
+pfpop(degrees_vec, penalty, weight_vec = rep(1, length(degrees_vec)))
 }
 \arguments{
   \item{degrees_vec}{
