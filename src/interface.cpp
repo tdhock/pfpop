@@ -18,7 +18,7 @@ Rcpp::List pfpop_interface
   Rcpp::NumericVector best_param_vec(N_data);
   Rcpp::IntegerVector best_N_segs(1);
   Rcpp::IntegerVector num_pieces_vec(N_data);
-  int status = pfpop
+  int status = pfpop_list
     (&degrees_vec[0],
      penalty,
      &weight_vec[0],

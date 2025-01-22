@@ -9,7 +9,7 @@
 #include <map>
 #include <list>
 
-int pfpop
+int pfpop_list
 (const double*, const double, const double*, const int, 
  int*, double*, double*, int*, int*);
 int decode
@@ -38,16 +38,43 @@ class LinearCoefsForList {
   void print();
 };
 
-class LinearCoefsForMap {
+class Breakpoint {
  public:
-  double Linear;
-  double Constant;
+  double Linear_diff;
   int data_i;
-  LinearCoefsForMap();
+  Breakpoint();
 };
 
 typedef std::list<LinearCoefsForList> L1LossList;
-typedef std::map<double, LinearCoefsForMap> L1LossMap;
+typedef std::map<double, Breakpoint> L1LossMap;
+
+class Pointer {
+public:
+  double Constant, Linear;
+  L1LossMap::iterator it;
+};
+
+class L1LossMapFun {
+public:
+  L1LossMap loss_map;
+  Pointer max_ptr, min_ptr;
+  Breakpoint last_break;
+  double Linear,Constant,min_param,max_param,weight;
+  L1LossMapFun();
+  void maybe_add(*Pointer);
+  double min();
+  double max();
+  void piece(double,double,double,double);
+  int  get_data_i(L1LossMap::iterator);
+  void set_data_i(L1LossMap::iterator, int);
+  double get_Linear_diff(L1LossMap::iterator);
+  void   set_Linear_diff(L1LossMap::iterator, double);
+  double get_param(L1LossMap::iterator);
+  Breakpoint* get_break_ptr(L1LossMap::iterator);
+  void delete_breaks(double);
+  void min_with_constant(double);
+  void add_loss_for_data(double,double);
+};
 
 class L1LossListFun;
 
