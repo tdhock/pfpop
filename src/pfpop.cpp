@@ -327,7 +327,8 @@ int pfpop_map
  double *best_cost_ptr,
  double *best_param_ptr,
  int *best_N_segs_ptr,
- int *num_pieces_ptr){
+ int *map_size_ptr,
+ int *pointer_moves_ptr){
   L1LossMapFun cost_model;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
   for(int data_i=0; data_i<N_data; data_i++){
@@ -355,12 +356,25 @@ int pfpop_map
       }else if(cost_model.max() <= penalty){
 	// no update to cost model.
       }else{
-	cost_model.min_with_constant(penalty);
+	//cost_model.min_with_constant(penalty);
+	return ERROR_NOT_IMPLEMENTED;
       }
     }
     cost_model.add_loss_for_data(angle, weight);
   }
   return 0;
+}
+
+double L1LossMapFun::min(){
+  return get_cost_at_pointer(min_ptr);
+}
+
+double L1LossMapFun::max(){
+  return get_cost_at_pointer(max_ptr);
+}
+
+double L1LossMapFun::get_cost_at_pointer(Pointer& pointer){
+  return get_param(pointer.it)*Linear+Constant;
 }
 
 void L1LossMapFun::piece
@@ -383,10 +397,20 @@ void L1LossMapFun::piece
     //true. Otherwise, it returns an iterator to the equivalent
     //element within the container and a value of false.
     std::pair<L1LossMap::iterator, bool> result;
-    result = loss_map.emplace(TODO);
+    double diff_Linear = (max_param==MAX_ANGLE && min_param!=MAX_ANGLE/2) ? 0 : -2*Linear;
+    Breakpoint new_break(0, -2);
+    result = loss_map.insert(std::pair<double,Breakpoint>(max_param, new_break));
+    //result = loss_map.emplace(max_param, INFINITY, -1);
+    result.first->second.Linear_diff += diff_Linear;
+    if(result.second){
+      // new breakpoint inserted, so we need to copy the adjacent data_i.
+      L1LossMap::iterator adj_it = result.first;
+      adj_it++;
+      set_data_i(result.first, get_data_i(adj_it));
+    }
   }
-  TODO add coefs;
-  TODO remove break if necessary;
+  //TODO add coefs;
+  //TODO remove break if necessary;
 }
 
 double L1LossMapFun::get_param(L1LossMap::iterator it){
@@ -423,10 +447,21 @@ void L1LossMapFun::add_loss_for_data(double angle, double weight_){
 
 void L1LossMapFun::delete_breaks(double new_cost){
   loss_map.clear();
-  min_ptr = max_ptr = loss_map.begin();
+  min_ptr.init(loss_map.begin(),new_cost);
+  max_ptr.init(loss_map.begin(),new_cost);
 }
 
-Breakpoint* get_break_ptr(L1LossMap::iterator it){
+Breakpoint::Breakpoint(double l,int d){
+  Linear_diff=l;
+  data_i=d;
+}
+
+Breakpoint::Breakpoint(){
+  Linear_diff=0;
+  data_i=-1;
+}
+
+Breakpoint* L1LossMapFun::get_break_ptr(L1LossMap::iterator it){
   if(it == loss_map.end())return &last_break;
   return &(it->second);
 }
@@ -448,6 +483,21 @@ void L1LossMapFun::set_Linear_diff(L1LossMap::iterator it, double Linear_diff){
 }
 
 void L1LossMapFun::min_with_constant(double constant){
+}
+
+L1LossMapFun::L1LossMapFun(){
+  delete_breaks(0);
+}
+
+Pointer::Pointer(){
+  Constant=0;
+  Linear=0;
+}
+
+void Pointer::init(L1LossMap::iterator it_, double Constant_){
+  Constant=Constant_;
+  Linear=0;
+  it = it_;
 }
 
 int pfpop_list

@@ -17,8 +17,9 @@ Rcpp::List pfpop_interface
   Rcpp::NumericVector best_cost_vec(N_data);
   Rcpp::NumericVector best_param_vec(N_data);
   Rcpp::IntegerVector best_N_segs(1);
-  Rcpp::IntegerVector num_pieces_vec(N_data);
-  int status = pfpop_list
+  Rcpp::IntegerVector map_size_vec(N_data);
+  Rcpp::IntegerVector pointer_moves_vec(N_data);
+  int status = pfpop_map
     (&degrees_vec[0],
      penalty,
      &weight_vec[0],
@@ -27,7 +28,8 @@ Rcpp::List pfpop_interface
      &best_cost_vec[0],
      &best_param_vec[0],
      &best_N_segs[0],
-     &num_pieces_vec[0]);
+     &map_size_vec[0],
+     &pointer_moves_vec[0]);
   if(status==ERROR_PENALTY_NEGATIVE || status==ERROR_PENALTY_NOT_FINITE){
     Rcpp::stop("penalty=%f must be non-negative", penalty);
   }
@@ -44,15 +46,15 @@ Rcpp::List pfpop_interface
   Rcpp::IntegerVector seg_start_vec(N_segs);
   Rcpp::IntegerVector seg_end_vec(N_segs);
   Rcpp::NumericVector seg_param_vec(N_segs);
-  int ignored = decode
-    (&best_change_vec[0],
-     &best_cost_vec[0],
-     &best_param_vec[0],
-     N_data,
-     &seg_start_vec[0],
-     &seg_end_vec[0],
-     &seg_param_vec[0],
-     N_segs);
+  // int ignored = decode
+  //   (&best_change_vec[0],
+  //    &best_cost_vec[0],
+  //    &best_param_vec[0],
+  //    N_data,
+  //    &seg_start_vec[0],
+  //    &seg_end_vec[0],
+  //    &seg_param_vec[0],
+  //    N_segs);
   return Rcpp::List::create
     (Rcpp::Named
      ("segments", Rcpp::DataFrame::create
@@ -64,5 +66,6 @@ Rcpp::List pfpop_interface
       (Rcpp::Named("change", best_change_vec),
        Rcpp::Named("cost", best_cost_vec),
        Rcpp::Named("param", best_param_vec),
-       Rcpp::Named("pieces", num_pieces_vec))));
+       Rcpp::Named("map_size", map_size_vec),
+       Rcpp::Named("pointer_moves", pointer_moves_vec))));
 }

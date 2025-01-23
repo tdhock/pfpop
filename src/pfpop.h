@@ -5,6 +5,7 @@
 #define ERROR_DATA_NOT_LESS_THAN_360 22
 #define ERROR_WEIGHT_NOT_FINITE 30
 #define ERROR_WEIGHT_NOT_POSITIVE 31
+#define ERROR_NOT_IMPLEMENTED 99
 
 #include <map>
 #include <list>
@@ -12,6 +13,9 @@
 int pfpop_list
 (const double*, const double, const double*, const int, 
  int*, double*, double*, int*, int*);
+int pfpop_map
+(const double*, const double, const double*, const int, 
+ int*, double*, double*, int*, int*, int*);
 int decode
 (const int *best_change_ptr,
  const double *best_cost_ptr,
@@ -42,6 +46,7 @@ class Breakpoint {
  public:
   double Linear_diff;
   int data_i;
+  Breakpoint(double,int);
   Breakpoint();
 };
 
@@ -52,6 +57,8 @@ class Pointer {
 public:
   double Constant, Linear;
   L1LossMap::iterator it;
+  Pointer();
+  void init(L1LossMap::iterator, double);
 };
 
 class L1LossMapFun {
@@ -61,7 +68,7 @@ public:
   Breakpoint last_break;
   double Linear,Constant,min_param,max_param,weight;
   L1LossMapFun();
-  void maybe_add(*Pointer);
+  void maybe_add(Pointer*);
   double min();
   double max();
   void piece(double,double,double,double);
@@ -70,6 +77,7 @@ public:
   double get_Linear_diff(L1LossMap::iterator);
   void   set_Linear_diff(L1LossMap::iterator, double);
   double get_param(L1LossMap::iterator);
+  double get_cost_at_pointer(Pointer&);
   Breakpoint* get_break_ptr(L1LossMap::iterator);
   void delete_breaks(double);
   void min_with_constant(double);
