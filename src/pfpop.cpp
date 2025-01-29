@@ -360,9 +360,53 @@ int pfpop_map
 	return ERROR_NOT_IMPLEMENTED;
       }
     }
+    // TODO to compute the mean cost instead of the total cost, we
+    // divide the penalty by the previous cumsum, and add that to the
+    // min-ified constant, before applying the min with constant.
     cost_model.add_loss_for_data(angle, weight);
+    pointer_moves_ptr[data_i] = cost_model.move_both_pointers();
   }
   return 0;
+}
+
+int L1LossMapFun::move_both_pointers(){
+  int moves = 0;
+  moves += move_one_pointer(max_ptr, 1);
+  moves += move_one_pointer(min_ptr, -1);
+  return moves;
+}
+
+int L1LossMapFun::move_one_pointer(Pointer &ptr, int sign){
+  if(ptr.Linear * sign < 0){
+    move_left(ptr);
+    return 1;
+  }
+  if(next_Linear(ptr) * sign >= 0){
+    move_right(ptr);
+    return 1;
+  }
+  return 0;
+}
+
+double L1LossMapFun::next_Linear(Pointer &ptr){
+  return ptr.Linear + it->second->Linear_diff;
+}
+
+void L1LossMapFun::move_left(Pointer &ptr){
+  if(ptr.it == loss_map.begin()){
+    ptr.it = loss_map.end();
+    Breakpoint *bptr = get_break_ptr(ptr.it);
+    if(bptr->Linear_diff == 0){
+      ptr.it--;
+    }
+  }
+  TODO;
+  update_coefs(ptr, -1);
+}
+
+void L1LossMapFun::move_right(Pointer &ptr){
+  TODO;
+  update_coefs(1);
 }
 
 double L1LossMapFun::min(){

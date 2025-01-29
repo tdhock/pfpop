@@ -82,6 +82,11 @@ public:
   void delete_breaks(double);
   void min_with_constant(double);
   void add_loss_for_data(double,double);
+  int move_both_pointers();
+  int move_one_pointer(Pointer&, int);
+  void move_left(Pointer&);
+  void move_right(Pointer&);
+  double next_Linear(Pointer&);
 };
 
 class L1LossListFun;
