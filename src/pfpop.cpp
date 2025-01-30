@@ -369,11 +369,11 @@ int pfpop_map
     // TODO to compute the mean cost instead of the total cost, we
     // divide the penalty by the previous cumsum, and add that to the
     // min-ified constant, before applying the min with constant.
-    printf("argmin=%f\n", cost_model.argmin());
+    //printf("argmin=%f\n", cost_model.argmin());
     cost_model.add_loss_for_data(angle, weight);
-    printf("argmin=%f\n", cost_model.argmin());
+    //printf("argmin=%f\n", cost_model.argmin());
     pointer_moves_ptr[data_i] = cost_model.move_both_pointers();
-    printf("argmin=%f\n", cost_model.argmin());
+    //printf("argmin=%f\n", cost_model.argmin());
     max_cost_ptr[data_i] = cost_model.max();
     max_param_ptr[data_i] = cost_model.argmax();
     max_Linear_ptr[data_i] = cost_model.max_ptr.Linear;
@@ -395,9 +395,9 @@ int L1LossMapFun::move_both_pointers(){
 }
 
 int L1LossMapFun::move_one_pointer(Pointer &ptr, double sign){
-  printf("sign=%f Linear=%f Constant=%f param=%f\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
+  //printf("sign=%f Linear=%f Constant=%f param=%f\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
   end_move(ptr, sign);
-  printf("sign=%f Linear=%f Constant=%f param=%f after\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
+  //printf("sign=%f Linear=%f Constant=%f param=%f after\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
   if(ptr.Linear * sign < 0){
     move_left(ptr);
     end_move(ptr, sign);
@@ -433,7 +433,7 @@ double L1LossMapFun::next_Linear(const Pointer ptr){
 }
 
 void L1LossMapFun::move_left(Pointer &ptr){
-  printf("move left\n");
+  //printf("move left\n");
   double param_before, param_after;
   if(ptr.it == loss_map.begin()){
     ptr.it = loss_map.end();
@@ -447,7 +447,7 @@ void L1LossMapFun::move_left(Pointer &ptr){
 }
 
 void L1LossMapFun::move_right(Pointer &ptr){
-  printf("move right\n");
+  //printf("move right\n");
   double param_before, param_after;
   if(ptr.it == loss_map.end()){
     param_before = MAX_ANGLE;
@@ -566,10 +566,10 @@ double L1LossMapFun::get_param(L1LossMap::iterator it){
 void L1LossMapFun::maybe_add(Pointer* ptr){
   double param = get_param(ptr->it);
   if(min_param < param & param <= max_param){
-    printf("before add Constant=%f Linear=%f\n", ptr->Constant, ptr->Linear);
+    //printf("before add Constant=%f Linear=%f\n", ptr->Constant, ptr->Linear);
     ptr->Constant += Constant;
     ptr->Linear += Linear;
-    printf("after  add Constant=%f Linear=%f\n",ptr->Constant, ptr->Linear);
+    //printf("after  add Constant=%f Linear=%f\n",ptr->Constant, ptr->Linear);
   }
 }
 
