@@ -78,13 +78,17 @@ public:
   double argmax();
   double min();
   double argmin();
+  void maybe_move_right(Pointer&,L1LossMap::iterator);
+  void move_then_erase(L1LossMap::iterator);
   void piece(double,double,double,double);
   int  get_data_i(L1LossMap::iterator);
   void set_data_i(L1LossMap::iterator, int);
   double get_Linear_diff(L1LossMap::iterator);
-  void   set_Linear_diff(L1LossMap::iterator, double);
+  void   add_Linear_diff(L1LossMap::iterator, double);
   double get_param(L1LossMap::iterator);
   double get_cost_at_pointer(const Pointer);
+  void end_move(Pointer&, double);
+  double get_param_or_mid(const Pointer);
   Breakpoint* get_break_ptr(L1LossMap::iterator);
   void delete_breaks(double);
   void min_with_constant(double);
@@ -94,7 +98,7 @@ public:
   void move_left(Pointer&);
   void move_right(Pointer&);
   double next_Linear(const Pointer);
-  void update_coefs(Pointer&, double, double);
+  void update_coefs(Pointer&, double, double, double);
 };
 
 class L1LossListFun;

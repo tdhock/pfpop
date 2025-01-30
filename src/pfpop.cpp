@@ -396,6 +396,22 @@ int L1LossMapFun::move_both_pointers(){
 
 int L1LossMapFun::move_one_pointer(Pointer &ptr, double sign){
   printf("sign=%f Linear=%f Constant=%f param=%f\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
+  end_move(ptr, sign);
+  printf("sign=%f Linear=%f Constant=%f param=%f after\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
+  if(ptr.Linear * sign < 0){
+    move_left(ptr);
+    end_move(ptr, sign);
+    return 1;
+  }
+  if(next_Linear(ptr) * sign >= 0){
+    move_right(ptr);
+    end_move(ptr, sign);
+    return 1;
+  }
+  return 0;
+}
+
+void L1LossMapFun::end_move(Pointer &ptr, double sign){
   if(get_Linear_diff(ptr.it)==0){
     if(ptr.Linear<0){
       if(sign==1)move_left(ptr);
@@ -403,19 +419,9 @@ int L1LossMapFun::move_one_pointer(Pointer &ptr, double sign){
     }else if(ptr.Linear>0){
       if(sign==1)move_right(ptr);
       else move_left(ptr);
-    }
+    }else move_right(ptr);
   }
-  printf("sign=%f Linear=%f Constant=%f param=%f after\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
-  if(ptr.Linear * sign < 0){
-    move_left(ptr);
-    return 1;
-  }
-  if(next_Linear(ptr) * sign >= 0){
-    move_right(ptr);
-    return 1;
-  }
-  return 0;
-}
+}  
 
 double L1LossMapFun::next_Linear(const Pointer ptr){
   double diff = get_Linear_diff(ptr.it);
@@ -427,19 +433,29 @@ double L1LossMapFun::next_Linear(const Pointer ptr){
 }
 
 void L1LossMapFun::move_left(Pointer &ptr){
-    printf("move left\n");
+  printf("move left\n");
+  double param_before, param_after;
   if(ptr.it == loss_map.begin()){
     ptr.it = loss_map.end();
+    param_before = 0;
+    param_after = MAX_ANGLE;
   }else{
     ptr.it--;
+    param_before = param_after = get_param(ptr.it);
   }
-  update_coefs(ptr, -1, get_param(ptr.it));
+  update_coefs(ptr, -1, param_before, param_after);
 }
 
 void L1LossMapFun::move_right(Pointer &ptr){
   printf("move right\n");
-  double new_param = (ptr.it == loss_map.end()) ? 0 : get_param(ptr.it);
-  update_coefs(ptr, 1, new_param);
+  double param_before, param_after;
+  if(ptr.it == loss_map.end()){
+    param_before = MAX_ANGLE;
+    param_after = 0;
+  }else{
+    param_before = param_after = get_param(ptr.it);
+  }
+  update_coefs(ptr, 1, param_before, param_after);
   if(ptr.it == loss_map.end()){
     ptr.it = loss_map.begin();
   }else{
@@ -447,12 +463,12 @@ void L1LossMapFun::move_right(Pointer &ptr){
   }
 }
 
-void L1LossMapFun::update_coefs(Pointer &ptr, double sign, double param){
+void L1LossMapFun::update_coefs
+(Pointer &ptr, double sign, double param_before, double param_after){
   double ldiff = get_Linear_diff(ptr.it);
-  double cost = get_cost_at_pointer(ptr);
-  printf("update param=%f cost=%f ldiff=%f\n", param, cost, ldiff);
+  double cost = ptr.Constant + ptr.Linear*param_before;
   ptr.Linear += sign*ldiff;
-  ptr.Constant = cost-ptr.Linear*param;
+  ptr.Constant = cost-ptr.Linear*param_after;
 }
 
 double L1LossMapFun::min(){
@@ -464,11 +480,29 @@ double L1LossMapFun::max(){
 }
 
 double L1LossMapFun::argmin(){
-  return get_param(min_ptr.it);
+  return get_param_or_mid(min_ptr);
 }
 
 double L1LossMapFun::argmax(){
-  return get_param(max_ptr.it);
+  return get_param_or_mid(max_ptr);
+}
+
+double L1LossMapFun::get_param_or_mid(const Pointer ptr){
+  if(ptr.Linear!=0)return(get_param(ptr.it));
+  if(ptr.it == loss_map.end())return INFINITY;
+  double last_param, first_param;
+  if(ptr.it == loss_map.begin()){
+    L1LossMap::iterator last_it = loss_map.end();
+    last_it--;
+    last_param = get_param(last_it);
+    first_param = get_param(ptr.it) + MAX_ANGLE;
+  }else{
+    L1LossMap::iterator prev_it = ptr.it;
+    prev_it--;
+    last_param = get_param(ptr.it);
+    first_param = get_param(prev_it);
+  }
+  return (last_param+first_param)/2;
 }
 
 double L1LossMapFun::get_cost_at_pointer(const Pointer ptr){
@@ -484,7 +518,10 @@ void L1LossMapFun::piece
   max_param=max_param_;
   maybe_add(&min_ptr);
   maybe_add(&max_ptr);
+  std::pair<L1LossMap::iterator, bool> result;
   Breakpoint* break_ptr;
+  Breakpoint new_break(0, -2);
+  double diff_Linear = (max_param==MAX_ANGLE && min_param!=MAX_ANGLE/2) ? 0 : -2*Linear;
   if(max_param==MAX_ANGLE){
     break_ptr = &last_break;
   }else{
@@ -494,19 +531,30 @@ void L1LossMapFun::piece
     //of an iterator to the newly inserted element and a value of
     //true. Otherwise, it returns an iterator to the equivalent
     //element within the container and a value of false.
-    std::pair<L1LossMap::iterator, bool> result;
-    double diff_Linear = (max_param==MAX_ANGLE && min_param!=MAX_ANGLE/2) ? 0 : -2*Linear;
-    Breakpoint new_break(0, -2);
     result = loss_map.insert(std::pair<double,Breakpoint>(max_param, new_break));
     //result = loss_map.emplace(max_param, INFINITY, -1);
-    set_Linear_diff(result.first, diff_Linear);
     if(result.second){
       // new breakpoint inserted, so we need to copy the adjacent data_i.
       L1LossMap::iterator adj_it = result.first;
       adj_it++;
       set_data_i(result.first, get_data_i(adj_it));
     }
+    break_ptr = get_break_ptr(result.first);
   }
+  break_ptr->Linear_diff += diff_Linear;
+  if(break_ptr->Linear_diff==0 && max_param < MAX_ANGLE){
+    move_then_erase(result.first);
+  }
+}
+
+void L1LossMapFun::move_then_erase(L1LossMap::iterator it){
+  maybe_move_right(min_ptr, it);
+  maybe_move_right(max_ptr, it);
+  loss_map.erase(it);
+}
+
+void L1LossMapFun::maybe_move_right(Pointer &ptr, L1LossMap::iterator it){
+  if(ptr.it == it)move_right(ptr);
 }
 
 double L1LossMapFun::get_param(L1LossMap::iterator it){
@@ -572,10 +620,6 @@ double L1LossMapFun::get_Linear_diff(L1LossMap::iterator it){
 
 void L1LossMapFun::set_data_i(L1LossMap::iterator it, int data_i){
   get_break_ptr(it)->data_i = data_i;
-}
-
-void L1LossMapFun::set_Linear_diff(L1LossMap::iterator it, double Linear_diff){
-  get_break_ptr(it)->Linear_diff = Linear_diff;
 }
 
 void L1LossMapFun::min_with_constant(double constant){
