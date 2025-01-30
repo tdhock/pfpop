@@ -509,7 +509,7 @@ double L1LossMapFun::get_cost_at_pointer(const Pointer ptr){
   return get_param(ptr.it)*ptr.Linear+ptr.Constant;
 }
 
-void L1LossMapFun::piece
+L1LossMap::iterator L1LossMapFun::piece
 (double Linear_, double Constant_,
  double min_param_, double max_param_){
   Linear=Linear_*weight;
@@ -519,6 +519,7 @@ void L1LossMapFun::piece
   maybe_add(&min_ptr);
   maybe_add(&max_ptr);
   std::pair<L1LossMap::iterator, bool> result;
+  result.first = loss_map.end();
   Breakpoint* break_ptr;
   Breakpoint new_break(0, -2);
   double diff_Linear = (max_param==MAX_ANGLE && min_param!=MAX_ANGLE/2) ? 0 : -2*Linear;
@@ -542,15 +543,15 @@ void L1LossMapFun::piece
     break_ptr = get_break_ptr(result.first);
   }
   break_ptr->Linear_diff += diff_Linear;
-  if(break_ptr->Linear_diff==0 && max_param < MAX_ANGLE){
-    move_then_erase(result.first);
-  }
+  return result.first;
 }
 
-void L1LossMapFun::move_then_erase(L1LossMap::iterator it){
-  maybe_move_right(min_ptr, it);
-  maybe_move_right(max_ptr, it);
-  loss_map.erase(it);
+void L1LossMapFun::maybe_move_erase(L1LossMap::iterator it){
+  if(it!=loss_map.end() && get_Linear_diff(it)==0){
+    maybe_move_right(min_ptr, it);
+    maybe_move_right(max_ptr, it);
+    loss_map.erase(it);
+  }
 }
 
 void L1LossMapFun::maybe_move_right(Pointer &ptr, L1LossMap::iterator it){
@@ -565,28 +566,34 @@ double L1LossMapFun::get_param(L1LossMap::iterator it){
 void L1LossMapFun::maybe_add(Pointer* ptr){
   double param = get_param(ptr->it);
   if(min_param < param & param <= max_param){
+    printf("before add Constant=%f Linear=%f\n", ptr->Constant, ptr->Linear);
     ptr->Constant += Constant;
     ptr->Linear += Linear;
+    printf("after  add Constant=%f Linear=%f\n",ptr->Constant, ptr->Linear);
   }
 }
 
 void L1LossMapFun::add_loss_for_data(double angle, double weight_){
   weight = weight_;
+  L1LossMap::iterator i1, i2, i3=loss_map.end();
   if(angle == 0){
-    piece(1, 0, 0, MAX_ANGLE/2);
-    piece(-1, MAX_ANGLE, MAX_ANGLE/2, MAX_ANGLE);
+    i1=piece(1, 0, 0, MAX_ANGLE/2);
+    i2=piece(-1, MAX_ANGLE, MAX_ANGLE/2, MAX_ANGLE);
   }else if(angle < MAX_ANGLE/2){
-    piece(-1, angle, 0, angle);
-    piece(1, -angle, angle, angle+MAX_ANGLE/2);
-    piece(-1, (MAX_ANGLE+angle), angle+MAX_ANGLE/2, MAX_ANGLE);
+    i1=piece(-1, angle, 0, angle);
+    i2=piece(1, -angle, angle, angle+MAX_ANGLE/2);
+    i3=piece(-1, (MAX_ANGLE+angle), angle+MAX_ANGLE/2, MAX_ANGLE);
   }else if(angle == MAX_ANGLE/2){
-    piece(-1, MAX_ANGLE/2, 0, MAX_ANGLE/2);
-    piece(1, -MAX_ANGLE/2, MAX_ANGLE/2, MAX_ANGLE);
+    i1=piece(-1, MAX_ANGLE/2, 0, MAX_ANGLE/2);
+    i2=piece(1, -MAX_ANGLE/2, MAX_ANGLE/2, MAX_ANGLE);
   }else{
-    piece(1, MAX_ANGLE-angle, 0, angle-MAX_ANGLE/2);
-    piece(-1, angle, angle-MAX_ANGLE/2, angle);
-    piece(1, -angle, angle, MAX_ANGLE);
+    i1=piece(1, MAX_ANGLE-angle, 0, angle-MAX_ANGLE/2);
+    i2=piece(-1, angle, angle-MAX_ANGLE/2, angle);
+    i3=piece(1, -angle, angle, MAX_ANGLE);
   }
+  maybe_move_erase(i1);
+  maybe_move_erase(i2);
+  maybe_move_erase(i3);
 }
 
 void L1LossMapFun::delete_breaks(double new_cost){

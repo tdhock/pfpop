@@ -79,8 +79,8 @@ public:
   double min();
   double argmin();
   void maybe_move_right(Pointer&,L1LossMap::iterator);
-  void move_then_erase(L1LossMap::iterator);
-  void piece(double,double,double,double);
+  void maybe_move_erase(L1LossMap::iterator);
+  L1LossMap::iterator piece(double,double,double,double);
   int  get_data_i(L1LossMap::iterator);
   void set_data_i(L1LossMap::iterator, int);
   double get_Linear_diff(L1LossMap::iterator);
