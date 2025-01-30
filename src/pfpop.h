@@ -15,7 +15,12 @@ int pfpop_list
  int*, double*, double*, int*, int*);
 int pfpop_map
 (const double*, const double, const double*, const int, 
- int*, double*, double*, int*, int*, int*);
+ int*,
+ double*, double*,
+ double*, double*,
+ double*, double*,
+ double*, double*,
+ int*, int*, int*);
 int decode
 (const int *best_change_ptr,
  const double *best_cost_ptr,
@@ -69,24 +74,27 @@ public:
   double Linear,Constant,min_param,max_param,weight;
   L1LossMapFun();
   void maybe_add(Pointer*);
-  double min();
   double max();
+  double argmax();
+  double min();
+  double argmin();
   void piece(double,double,double,double);
   int  get_data_i(L1LossMap::iterator);
   void set_data_i(L1LossMap::iterator, int);
   double get_Linear_diff(L1LossMap::iterator);
   void   set_Linear_diff(L1LossMap::iterator, double);
   double get_param(L1LossMap::iterator);
-  double get_cost_at_pointer(Pointer&);
+  double get_cost_at_pointer(const Pointer);
   Breakpoint* get_break_ptr(L1LossMap::iterator);
   void delete_breaks(double);
   void min_with_constant(double);
   void add_loss_for_data(double,double);
   int move_both_pointers();
-  int move_one_pointer(Pointer&, int);
+  int move_one_pointer(Pointer&, double);
   void move_left(Pointer&);
   void move_right(Pointer&);
-  double next_Linear(Pointer&);
+  double next_Linear(const Pointer);
+  void update_coefs(Pointer&, double, double);
 };
 
 class L1LossListFun;

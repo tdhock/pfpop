@@ -14,8 +14,14 @@ Rcpp::List pfpop_interface
     Rcpp::stop("degrees_vec and weight_vec lengths must be equal");
   }
   Rcpp::IntegerVector best_change_vec(N_data);
-  Rcpp::NumericVector best_cost_vec(N_data);
-  Rcpp::NumericVector best_param_vec(N_data);
+  Rcpp::NumericVector max_cost_vec(N_data);
+  Rcpp::NumericVector max_param_vec(N_data);
+  Rcpp::NumericVector max_Linear_vec(N_data);
+  Rcpp::NumericVector max_Constant_vec(N_data);
+  Rcpp::NumericVector min_cost_vec(N_data);
+  Rcpp::NumericVector min_param_vec(N_data);
+  Rcpp::NumericVector min_Linear_vec(N_data);
+  Rcpp::NumericVector min_Constant_vec(N_data);
   Rcpp::IntegerVector best_N_segs(1);
   Rcpp::IntegerVector map_size_vec(N_data);
   Rcpp::IntegerVector pointer_moves_vec(N_data);
@@ -25,8 +31,14 @@ Rcpp::List pfpop_interface
      &weight_vec[0],
      N_data,
      &best_change_vec[0],
-     &best_cost_vec[0],
-     &best_param_vec[0],
+     &max_cost_vec[0],
+     &max_param_vec[0],
+     &max_Linear_vec[0],
+     &max_Constant_vec[0],
+     &min_cost_vec[0],
+     &min_param_vec[0],
+     &min_Linear_vec[0],
+     &min_Constant_vec[0],
      &best_N_segs[0],
      &map_size_vec[0],
      &pointer_moves_vec[0]);
@@ -42,7 +54,8 @@ Rcpp::List pfpop_interface
   if(status != 0){
     Rcpp::stop("error code %d", status);
   }
-  int N_segs = best_N_segs[0];
+  //int N_segs = best_N_segs[0];
+  int N_segs = 0;
   Rcpp::IntegerVector seg_start_vec(N_segs);
   Rcpp::IntegerVector seg_end_vec(N_segs);
   Rcpp::NumericVector seg_param_vec(N_segs);
@@ -64,8 +77,14 @@ Rcpp::List pfpop_interface
      Rcpp::Named
      ("iterations", Rcpp::DataFrame::create
       (Rcpp::Named("change", best_change_vec),
-       Rcpp::Named("cost", best_cost_vec),
-       Rcpp::Named("param", best_param_vec),
+       Rcpp::Named("max_cost", max_cost_vec),
+       Rcpp::Named("max_param", max_param_vec),
+       Rcpp::Named("max_Linear", max_Linear_vec),
+       Rcpp::Named("max_Constant", max_Constant_vec),
+       Rcpp::Named("min_cost", min_cost_vec),
+       Rcpp::Named("min_param", min_param_vec),
+       Rcpp::Named("min_Linear", min_Linear_vec),
+       Rcpp::Named("min_Constant", min_Constant_vec),
        Rcpp::Named("map_size", map_size_vec),
        Rcpp::Named("pointer_moves", pointer_moves_vec))));
 }
