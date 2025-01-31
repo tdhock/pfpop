@@ -80,36 +80,17 @@ data_vec <- runif(8,0,360)
 gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 plot_check(gres, result)
 
-map_list_atime <- atime::atime(
-  setup={
-    set.seed(1)
-    data_vec <- runif(N,0,360)
-  },
-  map={
-    mres <- pfpop::pfpop_map(data_vec, Inf)
-    with(mres$iterations, data.frame(
-      cost=min_cost[N]/N,
-      space=max(map_size),
-      moves=sum(pointer_moves)))
-  },
-  list={
-    lres <- pfpop::pfpop_list(data_vec, Inf)
-    data.frame(
-      cost=lres$iterations$best_cost[N],
-      space=max(lres$iterations$num_pieces),
-      moves=NA)
-  },
-  seconds.limit=0.1,
-  result=TRUE
-)
-plot(map_list_atime)
+## Multiple global min/max.
+N <- 9
+data_vec <- seq(1, 90, l=N)+rep(c(0,180),l=N)
+(result <- pfpop::pfpop_map(data_vec, Inf))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+plot_check(gres, result)
 
-library(data.table)
-dcast(
-  map_list_atime$measurements,
-  N ~ expr.name,
-  value.var="cost"
-)[list<map]
+## This seems like a worst case number of pointer moves.
+N <- 5
+data_vec <- (seq(0, 1, l=N)^2+1)*90/2+rep(c(0,180),l=N)
+(result <- pfpop::pfpop_map(data_vec, Inf))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+plot_check(gres, result)
 
-map_list_refs <- atime::references_best(map_list_atime)
-plot(map_list_refs)
