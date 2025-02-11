@@ -218,9 +218,9 @@ void L1LossListFun::print(){
 
 void LinearCoefsForList::print(){
   Rprintf("%.20e %.20e %15f %15f %15f %d\n",
-	 Linear, Constant,
-	 min_angle_param, max_angle_param,
-	 prev_angle_param, data_i);
+	  Linear, Constant,
+	  min_angle_param, max_angle_param,
+	  prev_angle_param, data_i);
 }
 
 void L1LossListFun::emplace_piece
@@ -334,7 +334,7 @@ int pfpop_map
  double *min_Constant_ptr,
  int *best_N_segs_ptr,
  int *map_size_ptr,
- int *pointer_moves_ptr){
+ int *list_size_ptr){
   L1LossMapFun cost_model;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
   for(int data_i=0; data_i<N_data; data_i++){
@@ -369,193 +369,191 @@ int pfpop_map
     // TODO to compute the mean cost instead of the total cost, we
     // divide the penalty by the previous cumsum, and add that to the
     // min-ified constant, before applying the min with constant.
-    //printf("argmin=%f\n", cost_model.argmin());
     cost_model.add_loss_for_data(angle, weight);
-    //printf("argmin=%f\n", cost_model.argmin());
-    pointer_moves_ptr[data_i] = cost_model.move_both_pointers();
-    //printf("argmin=%f\n", cost_model.argmin());
-    max_cost_ptr[data_i] = cost_model.max();
-    max_param_ptr[data_i] = cost_model.argmax();
-    max_Linear_ptr[data_i] = cost_model.max_ptr.Linear;
-    max_Constant_ptr[data_i] = cost_model.max_ptr.Constant;
-    min_cost_ptr[data_i] = cost_model.min();
-    min_param_ptr[data_i] = cost_model.argmin();
-    min_Linear_ptr[data_i] = cost_model.min_ptr.Linear;
-    min_Constant_ptr[data_i] = cost_model.min_ptr.Constant;
-    map_size_ptr[data_i] = cost_model.loss_map.size();
+    cost_model.write_min_or_max
+      (data_i, -1,
+       min_cost_ptr, min_param_ptr, min_Linear_ptr, min_Constant_ptr);
+    cost_model.write_min_or_max
+      (data_i, 1,
+       max_cost_ptr, max_param_ptr, max_Linear_ptr, max_Constant_ptr);
+    list_size_ptr[data_i] = cost_model.ptr_list.size();
   }
+  best_N_segs_ptr[0]=0;//TODO.
   return 0;
 }
 
-int L1LossMapFun::move_both_pointers(){
-  int moves = 0;
-  moves += move_one_pointer(max_ptr, 1);
-  moves += move_one_pointer(min_ptr, -1);
-  return moves;
-}
-
-int L1LossMapFun::move_one_pointer(Pointer &ptr, double sign){
-  //printf("sign=%f Linear=%f Constant=%f param=%f\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
-  end_move(ptr, sign);
-  //printf("sign=%f Linear=%f Constant=%f param=%f after\n", sign, ptr.Linear, ptr.Constant, get_param(ptr.it));
-  if(ptr.Linear * sign < 0){
-    move_left(ptr);
-    end_move(ptr, sign);
-    return 1;
-  }
-  if(next_Linear(ptr) * sign >= 0){
-    move_right(ptr);
-    end_move(ptr, sign);
-    return 1;
-  }
-  return 0;
-}
-
-void L1LossMapFun::end_move(Pointer &ptr, double sign){
-  if(get_Linear_diff(ptr.it)==0){
-    if(ptr.Linear<0){
-      if(sign==1)move_left(ptr);
-      else move_right(ptr);
-    }else if(ptr.Linear>0){
-      if(sign==1)move_right(ptr);
-      else move_left(ptr);
-    }else move_right(ptr);
-  }
-}  
-
-double L1LossMapFun::next_Linear(const Pointer ptr){
-  double diff = get_Linear_diff(ptr.it);
-  // if(diff == 0){
-  //   L1LossMap::iterator it = loss_map.begin();
-  //   diff = get_Linear_diff(it);
-  // }
-  return ptr.Linear + diff;
-}
-
-void L1LossMapFun::move_left(Pointer &ptr){
-  //printf("move left\n");
-  double param_before, param_after;
-  if(ptr.it == loss_map.begin()){
-    ptr.it = loss_map.end();
-    param_before = 0;
-    param_after = MAX_ANGLE;
-  }else{
-    ptr.it--;
-    param_before = param_after = get_param(ptr.it);
-  }
-  update_coefs(ptr, -1, param_before, param_after);
-}
-
-void L1LossMapFun::move_right(Pointer &ptr){
-  //printf("move right\n");
-  double param_before, param_after;
-  if(ptr.it == loss_map.end()){
-    param_before = MAX_ANGLE;
-    param_after = 0;
-  }else{
-    param_before = param_after = get_param(ptr.it);
-  }
-  update_coefs(ptr, 1, param_before, param_after);
-  if(ptr.it == loss_map.end()){
-    ptr.it = loss_map.begin();
-  }else{
-    ptr.it++;
+void L1LossMapFun::write_min_or_max
+(int data_i, int sign,
+ double *best, double *param, double *Linear, double *Constant
+ ){
+  best[data_i] = -INFINITY * sign;
+  for
+    (ClusterList::iterator it=ptr_list.begin();
+     it != ptr_list.end();
+     it++){
+    double cost = get_cost_at_ptr(*it);
+    if(sign*cost > sign*best[data_i]){
+      best[data_i] = cost;
+      param[data_i] = get_param_or_mid(*it);
+      Linear[data_i] = it->opt.Linear;
+      Constant[data_i] = it->opt.Constant;
+    }
   }
 }
 
-void L1LossMapFun::update_coefs
-(Pointer &ptr, double sign, double param_before, double param_after){
-  double ldiff = get_Linear_diff(ptr.it);
-  double cost = ptr.Constant + ptr.Linear*param_before;
-  ptr.Linear += sign*ldiff;
-  ptr.Constant = cost-ptr.Linear*param_after;
+void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
+  angle = angle_;
+  weight = weight_;
+  step = 1;//update coefs
+  all_pointers();
+  step = 2;//add/update breaks
+  pieces();
+  step = 3;//move ptr if Linear_diff=0
+  all_pointers();
+  step = 4;//delete break if Linear_diff=0
+  pieces();
+  step = 5;//combine adjacent pairs of pointers.
+  all_pointers();
+  step = 6;//split pointers
+  all_pointers();
+  step = 7;//move opt iterators.
+  all_pointers();
 }
 
-double L1LossMapFun::min(){
-  return get_cost_at_pointer(min_ptr);
+void L1LossMapFun::all_pointers(){
+  for
+    (ClusterList::iterator it=ptr_list.begin();
+     it != ptr_list.end();
+     it++){
+    ptr = &(*it);
+    pieces();
+  }
 }
 
 double L1LossMapFun::max(){
-  return get_cost_at_pointer(max_ptr);
+  return INFINITY;//TODO
 }
 
-double L1LossMapFun::argmin(){
-  return get_param_or_mid(min_ptr);
+double L1LossMapFun::min(){
+  return 0;//TODO
 }
 
-double L1LossMapFun::argmax(){
-  return get_param_or_mid(max_ptr);
-}
-
-double L1LossMapFun::get_param_or_mid(const Pointer ptr){
-  if(ptr.Linear!=0)return(get_param(ptr.it));
-  if(ptr.it == loss_map.end())return INFINITY;
+double L1LossMapFun::get_param_or_mid(const Cluster cl){
+  if(cl.opt.Linear!=0)return(get_param(cl.opt.it));
+  if(cl.opt.it == loss_map.end())return INFINITY;
   double last_param, first_param;
-  if(ptr.it == loss_map.begin()){
+  if(cl.opt.it == loss_map.begin()){
     L1LossMap::iterator last_it = loss_map.end();
     last_it--;
     last_param = get_param(last_it);
-    first_param = get_param(ptr.it) + MAX_ANGLE;
+    first_param = get_param(cl.opt.it) + MAX_ANGLE;
   }else{
-    L1LossMap::iterator prev_it = ptr.it;
+    L1LossMap::iterator prev_it = cl.opt.it;
     prev_it--;
-    last_param = get_param(ptr.it);
+    last_param = get_param(cl.opt.it);
     first_param = get_param(prev_it);
   }
   return (last_param+first_param)/2;
 }
 
-double L1LossMapFun::get_cost_at_pointer(const Pointer ptr){
-  return get_param(ptr.it)*ptr.Linear+ptr.Constant;
+double L1LossMapFun::get_cost_at_ptr(const Cluster cl){
+  return get_param(cl.opt.it)*cl.opt.Linear+cl.opt.Constant;
 }
 
-L1LossMap::iterator L1LossMapFun::piece
+double Mapit::get_param(){
+  return it->first;
+}
+
+void L1LossMapFun::piece
 (double Linear_, double Constant_,
  double min_param_, double max_param_){
   Linear=Linear_*weight;
   Constant=Constant_*weight;
   min_param=min_param_;
   max_param=max_param_;
-  maybe_add(&min_ptr);
-  maybe_add(&max_ptr);
-  std::pair<L1LossMap::iterator, bool> result;
-  result.first = loss_map.end();
-  Breakpoint* break_ptr;
-  Breakpoint new_break(0, -2);
-  double diff_Linear = (max_param==MAX_ANGLE && min_param!=MAX_ANGLE/2) ? 0 : -2*Linear;
-  if(max_param==MAX_ANGLE){
-    break_ptr = &last_break;
-  }else{
-    //https://cplusplus.com/reference/map/map/emplace/ says If the
-    //function successfully inserts the element (because no equivalent
-    //element existed already in the map), the function returns a pair
-    //of an iterator to the newly inserted element and a value of
-    //true. Otherwise, it returns an iterator to the equivalent
-    //element within the container and a value of false.
-    result = loss_map.insert(std::pair<double,Breakpoint>(max_param, new_break));
-    //result = loss_map.emplace(max_param, INFINITY, -1);
+  double diff_Linear_at_min = (min_param==0 && max_param != MAX_ANGLE/2) ? 0 : 2*Linear;
+  if(step==1 && min_param <= ptr->opt.get_param() && ptr->opt.get_param() < max_param){//update coefs
+    ptr->opt.Linear += Linear;
+    ptr->opt.Constant += Constant;
+  }
+  if(step==2 && diff_Linear_at_min){//insert or update bkpt in map
+    std::pair<L1LossMap::iterator, bool> result;
+    Breakpoint new_break(0, -2);
+    result = loss_map.insert(std::pair<double,Breakpoint>(min_param, new_break));
     if(result.second){
       // new breakpoint inserted, so we need to copy the adjacent data_i.
       L1LossMap::iterator adj_it = result.first;
       adj_it++;
       set_data_i(result.first, get_data_i(adj_it));
     }
-    break_ptr = get_break_ptr(result.first);
+    result.first->second.Linear_diff += diff_Linear_at_min;
   }
-  break_ptr->Linear_diff += diff_Linear;
-  return result.first;
+  if(step==3){//move iterators if diff_linear=0.
+    move_right_if_zero(ptr->first);
+    // points to piece on and after the breakpoint.
+    move_right_if_zero(ptr->opt);
+    move_left_if_zero(ptr->last);
+  }
+  if(step==4){//delete break if diff_linear=0.
+  }
+  if(step==5){//for each pair of adjacent pts, combine if necessary.
+  }
+  if(step==6){//split if necessary
+  }
+  if(step==7){//move opt it
+  }
 }
 
-void L1LossMapFun::maybe_move_erase(L1LossMap::iterator it){
-  if(it!=loss_map.end() && get_Linear_diff(it)==0){
-    maybe_move_right(min_ptr, it);
-    maybe_move_right(max_ptr, it);
-    loss_map.erase(it);
+void L1LossMapFun::move_right_if_zero(Mapit &mit){
+  move_if_zero(&L1LossMapFun::move_right, mit);
+}
+void L1LossMapFun::move_left_if_zero(Mapit &mit){
+  move_if_zero(&L1LossMapFun::move_left, mit);
+}
+void L1LossMapFun::move_if_zero(move_it_fun_ptr move, Mapit &mit){
+  if(mit.it != loss_map.end() && mit.it->second.Linear_diff==0){
+    (this->*move)(mit);
+    if(mit.it->second.Linear_diff==0){
+      // if after moving we are still at a zero, they all must be
+      // zeros, so move to the end.
+      mit.it = loss_map.end();
+    }
   }
 }
 
-void L1LossMapFun::maybe_move_right(Pointer &ptr, L1LossMap::iterator it){
-  if(ptr.it == it)move_right(ptr);
+void L1LossMapFun::move_left(Mapit &mit){
+  update_coefs(mit, -1, mit.get_param(), mit.get_param());
+  if(mit.it == loss_map.begin()){
+    update_coefs(mit, -1, 0, MAX_ANGLE);
+    mit.it = loss_map.end();
+  }
+  mit.it--;
+}
+
+void L1LossMapFun::move_right(Mapit &mit){
+  mit.it++;
+  if(mit.it == loss_map.end()){
+    update_coefs(mit, 1, MAX_ANGLE, 0);
+    mit.it = loss_map.begin();
+  }
+  update_coefs(mit, 1, mit.get_param(), mit.get_param());
+}
+
+void L1LossMapFun::update_coefs
+(Mapit &mit, int sign, double min_param, double max_param){
+  mit.update_coefs(sign, min_param, max_param, get_Linear_diff(mit.it));
+}
+
+void Mapit::update_coefs
+(int sign, double param_before, double param_after, double ldiff){
+  // do nothing.
+}
+
+void Coefs::update_coefs
+(int sign, double param_before, double param_after, double ldiff){
+  double cost = Constant + Linear*param_before;
+  Linear += sign*ldiff;
+  Constant = cost-Linear*param_after;
 }
 
 double L1LossMapFun::get_param(L1LossMap::iterator it){
@@ -563,43 +561,27 @@ double L1LossMapFun::get_param(L1LossMap::iterator it){
   return it->first;
 }
 
-void L1LossMapFun::maybe_add(Pointer* ptr){
-  double param = get_param(ptr->it);
-  if(min_param < param & param <= max_param){
-    //printf("before add Constant=%f Linear=%f\n", ptr->Constant, ptr->Linear);
-    ptr->Constant += Constant;
-    ptr->Linear += Linear;
-    //printf("after  add Constant=%f Linear=%f\n",ptr->Constant, ptr->Linear);
-  }
-}
-
-void L1LossMapFun::add_loss_for_data(double angle, double weight_){
-  weight = weight_;
-  L1LossMap::iterator i1, i2, i3=loss_map.end();
+void L1LossMapFun::pieces(){
   if(angle == 0){
-    i1=piece(1, 0, 0, MAX_ANGLE/2);
-    i2=piece(-1, MAX_ANGLE, MAX_ANGLE/2, MAX_ANGLE);
+    piece(1, 0, 0, MAX_ANGLE/2);
+    piece(-1, MAX_ANGLE, MAX_ANGLE/2, MAX_ANGLE);
   }else if(angle < MAX_ANGLE/2){
-    i1=piece(-1, angle, 0, angle);
-    i2=piece(1, -angle, angle, angle+MAX_ANGLE/2);
-    i3=piece(-1, (MAX_ANGLE+angle), angle+MAX_ANGLE/2, MAX_ANGLE);
+    piece(-1, angle, 0, angle);
+    piece(1, -angle, angle, angle+MAX_ANGLE/2);
+    piece(-1, (MAX_ANGLE+angle), angle+MAX_ANGLE/2, MAX_ANGLE);
   }else if(angle == MAX_ANGLE/2){
-    i1=piece(-1, MAX_ANGLE/2, 0, MAX_ANGLE/2);
-    i2=piece(1, -MAX_ANGLE/2, MAX_ANGLE/2, MAX_ANGLE);
+    piece(-1, MAX_ANGLE/2, 0, MAX_ANGLE/2);
+    piece(1, -MAX_ANGLE/2, MAX_ANGLE/2, MAX_ANGLE);
   }else{
-    i1=piece(1, MAX_ANGLE-angle, 0, angle-MAX_ANGLE/2);
-    i2=piece(-1, angle, angle-MAX_ANGLE/2, angle);
-    i3=piece(1, -angle, angle, MAX_ANGLE);
+    piece(1, MAX_ANGLE-angle, 0, angle-MAX_ANGLE/2);
+    piece(-1, angle, angle-MAX_ANGLE/2, angle);
+    piece(1, -angle, angle, MAX_ANGLE);
   }
-  maybe_move_erase(i1);
-  maybe_move_erase(i2);
-  maybe_move_erase(i3);
 }
 
 void L1LossMapFun::delete_breaks(double new_cost){
   loss_map.clear();
-  min_ptr.init(loss_map.end(),new_cost);
-  max_ptr.init(loss_map.end(),new_cost);
+  // TODO initial Clusters?
 }
 
 Breakpoint::Breakpoint(double l,int d){
@@ -612,21 +594,19 @@ Breakpoint::Breakpoint(){
   data_i=-1;
 }
 
-Breakpoint* L1LossMapFun::get_break_ptr(L1LossMap::iterator it){
-  if(it == loss_map.end())return &last_break;
-  return &(it->second);
-}
-
 int L1LossMapFun::get_data_i(L1LossMap::iterator it){
-  return get_break_ptr(it)->data_i;
+  if(it == loss_map.end())return -9;
+  return it->second.data_i;
 }
 
 double L1LossMapFun::get_Linear_diff(L1LossMap::iterator it){
-  return get_break_ptr(it)->Linear_diff;
+  if(it == loss_map.end())return INFINITY;
+  return it->second.Linear_diff;
 }
 
 void L1LossMapFun::set_data_i(L1LossMap::iterator it, int data_i){
-  get_break_ptr(it)->data_i = data_i;
+  if(it == loss_map.end())return;
+  it->second.data_i = data_i;
 }
 
 void L1LossMapFun::min_with_constant(double constant){
@@ -636,15 +616,10 @@ L1LossMapFun::L1LossMapFun(){
   delete_breaks(0);
 }
 
-Pointer::Pointer(){
-  Constant=0;
-  Linear=0;
+Cluster::Cluster(){
 }
 
-void Pointer::init(L1LossMap::iterator it_, double Constant_){
-  Constant=Constant_;
-  Linear=0;
-  it = it_;
+void Cluster::init(L1LossMap::iterator it_, double Constant_){
 }
 
 int pfpop_list

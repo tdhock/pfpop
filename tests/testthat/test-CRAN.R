@@ -94,3 +94,8 @@ data_vec <- (seq(0, 1, l=N)^2+1)*90/2+rep(c(0,180),l=N)
 gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 plot_check(gres, result)
 
+data_vec <- c(10, 20+180,40,50+180,80,90+180)
+(result <- pfpop::pfpop_map(data_vec, Inf))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+plot_check(gres, result)
+

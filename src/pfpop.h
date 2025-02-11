@@ -58,47 +58,72 @@ class Breakpoint {
 typedef std::list<LinearCoefsForList> L1LossList;
 typedef std::map<double, Breakpoint> L1LossMap;
 
-class Pointer {
+
+class Mapit {
+public:
+  L1LossMap::iterator it;
+  double get_param();
+  void update_coefs(int, double, double,double);
+};
+
+class Coefs : public Mapit {
 public:
   double Constant, Linear;
-  L1LossMap::iterator it;
-  Pointer();
+  void update_coefs(int,double,double,double);
+};
+
+class Cluster {
+public:
+  Mapit first, last;
+  Coefs opt;
+  Cluster();
   void init(L1LossMap::iterator, double);
 };
+
+class L1LossMapFun;
+typedef void (L1LossMapFun::*move_it_fun_ptr) (Mapit&);
+typedef std::list<Cluster> ClusterList;
 
 class L1LossMapFun {
 public:
   L1LossMap loss_map;
-  Pointer max_ptr, min_ptr;
-  Breakpoint last_break;
-  double Linear,Constant,min_param,max_param,weight;
+  ClusterList ptr_list;
+  Cluster *ptr;
+  double Linear,Constant,min_param,max_param,weight,angle;
+  int step;
   L1LossMapFun();
-  void maybe_add(Pointer*);
-  double max();
-  double argmax();
-  double min();
-  double argmin();
-  void maybe_move_right(Pointer&,L1LossMap::iterator);
+  void all_pointers();
+  void update_coefs(Mapit&,int,double,double);
+  void move_left(Mapit&);
+  void move_left_if_zero(Mapit&);
+  void move_right(Mapit&);
+  void move_right_if_zero(Mapit&);
+  void move_if_zero(move_it_fun_ptr,Mapit&);
+  void write_min_or_max(int,int,double*,double*,double*,double*);
+  void maybe_move_right(Cluster&,L1LossMap::iterator);
   void maybe_move_erase(L1LossMap::iterator);
-  L1LossMap::iterator piece(double,double,double,double);
+  void piece(double,double,double,double);
   int  get_data_i(L1LossMap::iterator);
   void set_data_i(L1LossMap::iterator, int);
   double get_Linear_diff(L1LossMap::iterator);
   void   add_Linear_diff(L1LossMap::iterator, double);
   double get_param(L1LossMap::iterator);
-  double get_cost_at_pointer(const Pointer);
-  void end_move(Pointer&, double);
-  double get_param_or_mid(const Pointer);
+  void move_to_diff(L1LossMap::iterator &it, Cluster *p, move_it_fun_ptr);
+  double min();
+  double max();
+  void pieces();
+  Cluster* get_min_ptr();
+  Cluster* get_max_ptr();
+  double get_cost_at_ptr(const Cluster);
+  void end_move(Cluster&, double);
+  double get_param_or_mid(const Cluster);
   Breakpoint* get_break_ptr(L1LossMap::iterator);
   void delete_breaks(double);
   void min_with_constant(double);
   void add_loss_for_data(double,double);
-  int move_both_pointers();
-  int move_one_pointer(Pointer&, double);
-  void move_left(Pointer&);
-  void move_right(Pointer&);
-  double next_Linear(const Pointer);
-  void update_coefs(Pointer&, double, double, double);
+  void move_pointers();
+  void move_left(L1LossMap::iterator&,Cluster*);
+  void move_right(L1LossMap::iterator&,Cluster*);
 };
 
 class L1LossListFun;
@@ -113,7 +138,8 @@ typedef void (L1LossListFun::*push_fun_ptr)
 class L1LossListFun {
  public:
   L1LossList piece_list;
-  double weight;
+  double angle, weight;
+  int step;
   L1LossListFun();
   void push_sum_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
   void push_min_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
