@@ -590,7 +590,7 @@ void L1LossMapFun::piece
       }
       new_cl.first.it = cluster_it->opt.it;
       new_cl.last.it = cluster_it->opt.it;
-      new_cl.optimize();
+      //new_cl.optimize();
       ClusterList::iterator new_it = ptr_list.insert(cluster_it, new_cl);
       if(moving_left){
 	new_cl.first.it = cluster_it->first.it;
@@ -602,17 +602,31 @@ void L1LossMapFun::piece
 	cluster_it->last.it = new_cl.opt.it;
 	cluster_it->last.it--;
       }
-      new_cl.optimize();
+      //new_cl.optimize();
       new_cl.sign = -cluster_it->sign;
       ptr_list.insert(insert_it, new_cl);
     }
   }
   if(step==7){//move opt it
+    move_left(cluster_it->first);
+    if(sgn(get_Linear_diff(cluster_it->first))!=cluster_it->sign){
+      move_right(cluster_it->first);
+    }
+    move_right(cluster_it->last);
+    if(sgn(get_Linear_diff(cluster_it->last))!=cluster_it->sign){
+      move_left(cluster_it->last);
+    }
+    if(prev_Linear(cluster_it->opt) * cluster_it->sign <= 0){
+      move_left(cluster_it->opt);
+    }
+    if(cluster_it->opt.Linear * cluster_it->sign > 0){
+      move_right(cluster_it->opt);
+    }
   }
 }
 
-void Cluster::optimize(){
-  //TODO
+double L1LossMapFun::prev_Linear(Coefs &mit){
+  return mit.Linear - get_Linear_diff(mit);
 }
 
 void L1LossMapFun::move_right_if_zero(Mapit &mit){

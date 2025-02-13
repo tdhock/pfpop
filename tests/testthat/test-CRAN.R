@@ -18,24 +18,38 @@ mean_cost <- function(result)melt(
   Cmean=Constant/N,
   cost_mean=cost/N
 )][]
+cldt <- function(data_i, opt, start, end){
+  sedt <- data.table(
+    data_i,
+    start=as.numeric(start),
+    end=as.numeric(end)
+  )[
+  , noInf := start <= end
+  ]
+  data.table(opt, rbind(
+    sedt[noInf==TRUE],
+    sedt[noInf==FALSE][, let(start=-Inf)],
+    sedt[noInf==FALSE][, let(end=Inf)]))
+}
 plot_check <- function(gres, result){
   map_dt <- mean_cost(result)
+  print(cluster.dt <- result$clusters[, rbind(
+    cldt(data_i, "before", first_param, opt_param),
+    cldt(data_i, "after", opt_param, last_param))])
   geodesichange::plot_model(gres$model)+
     theme_bw()+
     theme(panel.margin=grid::unit(0,"lines"))+
     facet_grid(data_i ~ ., scales="free")+
     geom_rect(aes(
-      xmin=first_param, xmax=last_param,
+      xmin=start, xmax=end,
+      fill=opt,
       ymin=-Inf, ymax=Inf),
-      data=result$clusters,
-      alpha=0.5,
-      color="black",
-      fill="grey")+
-    geom_vline(aes(
-      xintercept=opt_param),
-      data=result$clusters,
+      data=cluster.dt,
       alpha=0.5,
       color="black")+
+    scale_fill_manual(values=c(
+      before="black",
+      after="red"))+
     geom_point(aes(
       param, cost_mean, color=limit),
       size=4,
@@ -117,7 +131,8 @@ plot_check <- function(gres, result){
 ## gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 ## plot_check(gres, result)
 
-data_vec <- c(10, 200, 350)
+data_vec <- c(10, 200, 350, 330)
+data_vec <- c(10, 20, 30, 40)
 (result <- pfpop_map_verbose(data_vec))
 gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 plot_check(gres, result)

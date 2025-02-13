@@ -77,7 +77,6 @@ public:
   Mapit first, last;
   Coefs opt;
   Cluster();
-  void optimize();
   void init(L1LossMap::iterator, double);
 };
 
@@ -108,6 +107,7 @@ public:
   int  get_data_i(L1LossMap::iterator);
   void set_data_i(L1LossMap::iterator, int);
   void   add_Linear_diff(L1LossMap::iterator, double);
+  double prev_Linear(Coefs&);
   double get_Linear_diff(L1LossMap::iterator);
   double get_Linear_diff(Mapit&);
   double get_param(L1LossMap::iterator);
