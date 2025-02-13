@@ -5,7 +5,8 @@
 Rcpp::List pfpop_map_interface
 (const Rcpp::NumericVector degrees_vec,
  const double penalty,
- const Rcpp::NumericVector weight_vec){
+ const Rcpp::NumericVector weight_vec,
+ const std::string verbose_file){
   int N_data = degrees_vec.length();
   if(N_data < 1){
     Rcpp::stop("degrees_vec length must be one or more");
@@ -30,6 +31,8 @@ Rcpp::List pfpop_map_interface
      penalty,
      &weight_vec[0],
      N_data,
+     verbose_file.c_str(),
+     //Inputs above, outputs below.
      &best_change_vec[0],
      &max_cost_vec[0],
      &max_param_vec[0],

@@ -14,7 +14,7 @@ int pfpop_list
 (const double*, const double, const double*, const int, 
  int*, double*, double*, int*, int*);
 int pfpop_map
-(const double*, const double, const double*, const int, 
+(const double*, const double, const double*, const int, const char*, 
  int*,
  double*, double*,
  double*, double*,
@@ -62,7 +62,6 @@ typedef std::map<double, Breakpoint> L1LossMap;
 class Mapit {
 public:
   L1LossMap::iterator it;
-  double get_param();
   void update_coefs(int, double, double,double);
 };
 
@@ -74,9 +73,11 @@ public:
 
 class Cluster {
 public:
+  int sign;
   Mapit first, last;
   Coefs opt;
   Cluster();
+  void optimize();
   void init(L1LossMap::iterator, double);
 };
 
@@ -88,8 +89,9 @@ class L1LossMapFun {
 public:
   L1LossMap loss_map;
   ClusterList ptr_list;
-  Cluster *ptr;
+  ClusterList::iterator cluster_it;
   double Linear,Constant,min_param,max_param,weight,angle;
+  double cost;
   int step;
   L1LossMapFun();
   void all_pointers();
@@ -105,19 +107,19 @@ public:
   void piece(double,double,double,double);
   int  get_data_i(L1LossMap::iterator);
   void set_data_i(L1LossMap::iterator, int);
-  double get_Linear_diff(L1LossMap::iterator);
   void   add_Linear_diff(L1LossMap::iterator, double);
+  double get_Linear_diff(L1LossMap::iterator);
+  double get_Linear_diff(Mapit&);
   double get_param(L1LossMap::iterator);
+  double get_param(Mapit&);
   void move_to_diff(L1LossMap::iterator &it, Cluster *p, move_it_fun_ptr);
   double min();
   double max();
+  double min_or_max(int);
   void pieces();
-  Cluster* get_min_ptr();
-  Cluster* get_max_ptr();
   double get_cost_at_ptr(const Cluster);
   void end_move(Cluster&, double);
   double get_param_or_mid(const Cluster);
-  Breakpoint* get_break_ptr(L1LossMap::iterator);
   void delete_breaks(double);
   void min_with_constant(double);
   void add_loss_for_data(double,double);
