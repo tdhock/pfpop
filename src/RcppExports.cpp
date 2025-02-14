@@ -10,22 +10,37 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// pfpop_interface
-Rcpp::List pfpop_interface(const Rcpp::NumericVector degrees_vec, const double penalty, const Rcpp::NumericVector weight_vec);
-RcppExport SEXP _pfpop_pfpop_interface(SEXP degrees_vecSEXP, SEXP penaltySEXP, SEXP weight_vecSEXP) {
+// pfpop_map_interface
+Rcpp::List pfpop_map_interface(const Rcpp::NumericVector degrees_vec, const double penalty, const Rcpp::NumericVector weight_vec, const std::string verbose_file);
+RcppExport SEXP _pfpop_pfpop_map_interface(SEXP degrees_vecSEXP, SEXP penaltySEXP, SEXP weight_vecSEXP, SEXP verbose_fileSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type degrees_vec(degrees_vecSEXP);
     Rcpp::traits::input_parameter< const double >::type penalty(penaltySEXP);
     Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type weight_vec(weight_vecSEXP);
-    rcpp_result_gen = Rcpp::wrap(pfpop_interface(degrees_vec, penalty, weight_vec));
+    Rcpp::traits::input_parameter< const std::string >::type verbose_file(verbose_fileSEXP);
+    rcpp_result_gen = Rcpp::wrap(pfpop_map_interface(degrees_vec, penalty, weight_vec, verbose_file));
+    return rcpp_result_gen;
+END_RCPP
+}
+// pfpop_list_interface
+Rcpp::List pfpop_list_interface(const Rcpp::NumericVector degrees_vec, const double penalty, const Rcpp::NumericVector weight_vec);
+RcppExport SEXP _pfpop_pfpop_list_interface(SEXP degrees_vecSEXP, SEXP penaltySEXP, SEXP weight_vecSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type degrees_vec(degrees_vecSEXP);
+    Rcpp::traits::input_parameter< const double >::type penalty(penaltySEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type weight_vec(weight_vecSEXP);
+    rcpp_result_gen = Rcpp::wrap(pfpop_list_interface(degrees_vec, penalty, weight_vec));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_pfpop_pfpop_interface", (DL_FUNC) &_pfpop_pfpop_interface, 3},
+    {"_pfpop_pfpop_map_interface", (DL_FUNC) &_pfpop_pfpop_map_interface, 4},
+    {"_pfpop_pfpop_list_interface", (DL_FUNC) &_pfpop_pfpop_list_interface, 3},
     {NULL, NULL, 0}
 };
 

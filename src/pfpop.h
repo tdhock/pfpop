@@ -5,13 +5,22 @@
 #define ERROR_DATA_NOT_LESS_THAN_360 22
 #define ERROR_WEIGHT_NOT_FINITE 30
 #define ERROR_WEIGHT_NOT_POSITIVE 31
+#define ERROR_NOT_IMPLEMENTED 99
 
 #include <map>
 #include <list>
 
-int pfpop
+int pfpop_list
 (const double*, const double, const double*, const int, 
  int*, double*, double*, int*, int*);
+int pfpop_map
+(const double*, const double, const double*, const int, const char*, 
+ int*,
+ double*, double*,
+ double*, double*,
+ double*, double*,
+ double*, double*,
+ int*, int*, int*, int*);
 int decode
 (const int *best_change_ptr,
  const double *best_cost_ptr,
@@ -38,16 +47,87 @@ class LinearCoefsForList {
   void print();
 };
 
-class LinearCoefsForMap {
+class Breakpoint {
  public:
-  double Linear;
-  double Constant;
+  double Linear_diff;
   int data_i;
-  LinearCoefsForMap();
+  Breakpoint(double,int);
+  Breakpoint();
 };
 
 typedef std::list<LinearCoefsForList> L1LossList;
-typedef std::map<double, LinearCoefsForMap> L1LossMap;
+typedef std::map<double, Breakpoint> L1LossMap;
+
+
+class Mapit {
+public:
+  L1LossMap::iterator it;
+  void update_coefs(int, double, double,double);
+};
+
+class Coefs : public Mapit {
+public:
+  double Constant, Linear;
+  void update_coefs(int,double,double,double);
+};
+
+class Cluster {
+public:
+  int sign;
+  Coefs first, last;
+  Coefs opt;
+  Cluster();
+  void init(L1LossMap::iterator, double);
+};
+
+class L1LossMapFun;
+typedef void (L1LossMapFun::*move_it_fun_ptr) (Coefs&);
+typedef std::list<Cluster> ClusterList;
+
+class L1LossMapFun {
+public:
+  L1LossMap loss_map;
+  ClusterList ptr_list;
+  ClusterList::iterator cluster_it;
+  double Linear,Constant,min_param,max_param,weight,angle;
+  double cost;
+  int step, moves;
+  L1LossMapFun();
+  void all_pointers();
+  void update_coefs(Coefs&,int,double,double);
+  void move_left(Coefs&);
+  void move_left_if_zero(Coefs&);
+  void move_right(Coefs&);
+  void move_right_if_zero(Coefs&);
+  void move_if_zero(move_it_fun_ptr,Coefs&);
+  void write_min_or_max(int,int,double*,double*,double*,double*);
+  void maybe_move_right(Cluster&,L1LossMap::iterator);
+  void maybe_move_erase(L1LossMap::iterator);
+  void piece(double,double,double,double);
+  int  get_data_i(L1LossMap::iterator);
+  void set_data_i(L1LossMap::iterator, int);
+  void   add_Linear_diff(L1LossMap::iterator, double);
+  double prev_Linear(Coefs&);
+  double get_Linear_diff(L1LossMap::iterator);
+  double get_Linear_diff(Coefs&);
+  double get_param(L1LossMap::iterator);
+  double get_param(Coefs&);
+  void move_to_opt(ClusterList::iterator &it);
+  void move_to_diff(L1LossMap::iterator &it, Cluster *p, move_it_fun_ptr);
+  double min();
+  double max();
+  double min_or_max(int);
+  void pieces();
+  double get_cost_at_ptr(const Cluster);
+  void end_move(Cluster&, double);
+  double get_param_or_mid(const Cluster);
+  void delete_breaks(double);
+  void min_with_constant(double);
+  void add_loss_for_data(double,double);
+  void move_pointers();
+  void move_left(L1LossMap::iterator&,Cluster*);
+  void move_right(L1LossMap::iterator&,Cluster*);
+};
 
 class L1LossListFun;
 
@@ -61,7 +141,8 @@ typedef void (L1LossListFun::*push_fun_ptr)
 class L1LossListFun {
  public:
   L1LossList piece_list;
-  double weight;
+  double angle, weight;
+  int step;
   L1LossListFun();
   void push_sum_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
   void push_min_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
