@@ -333,7 +333,8 @@ int pfpop_map
  double *min_Constant_ptr,
  int *best_N_segs_ptr,
  int *map_size_ptr,
- int *list_size_ptr){
+ int *list_size_ptr,
+ int *num_moves_ptr){
   std::ofstream verbose_fstream; // ofstream supports output only.
   bool verbose = strcmp(verbose_file, "") != 0;
   if(verbose){
@@ -375,6 +376,7 @@ int pfpop_map
     // TODO to compute the mean cost instead of the total cost, we
     // divide the penalty by the previous cumsum, and add that to the
     // min-ified constant, before applying the min with constant.
+    cost_model.moves = 0;
     cost_model.add_loss_for_data(angle, weight);
     cost_model.write_min_or_max
       (data_i, -1,
@@ -382,7 +384,9 @@ int pfpop_map
     cost_model.write_min_or_max
       (data_i, 1,
        max_cost_ptr, max_param_ptr, max_Linear_ptr, max_Constant_ptr);
+    map_size_ptr[data_i] = cost_model.loss_map.size();
     list_size_ptr[data_i] = cost_model.ptr_list.size();
+    num_moves_ptr[data_i] = cost_model.moves;
     if(verbose){
       for
 	(ClusterList::iterator cluster_it=cost_model.ptr_list.begin();
@@ -485,19 +489,15 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
   }
 }
 
-int L1LossMapFun::move_to_opt(ClusterList::iterator &it){
-  int moves=0;
-  while(prev_Linear(it->opt) * it->sign >= 0){
+void L1LossMapFun::move_to_opt(ClusterList::iterator &it){
+  while(prev_Linear(it->opt) * it->sign >= 0 && it->opt.it != it->first.it){
     //printf("Linear=%f prev=%f sign=%d move opt left\n", it->opt.Linear, prev_Linear(it->opt), it->sign);
     move_left(it->opt);
-    moves++;
   }
-  while(it->opt.Linear * it->sign < 0){
+  while(it->opt.Linear * it->sign < 0 && it->opt.it != it->last.it){
     //printf("move opt right\n");
     move_right(it->opt);
-    moves++;
   }
-  return moves;
 }
 
 
@@ -640,7 +640,7 @@ void L1LossMapFun::piece
       new_cl.last.it = new_cl.opt.it;
       //new_cl.optimize();
       ptr_list.insert(insert_it, new_cl);
-      printf("first new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
+      //printf("first new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
       //printf("made it past insert\n");
       (this->*move)(new_cl.opt);//keep going one move past the new bkpt.
       if(moving_left){
@@ -651,11 +651,11 @@ void L1LossMapFun::piece
 	new_cl.last.it = orig_end;
       }
       move_to_opt(cluster_it);
-      printf("cluster_it first=%f opt=%f last=%f\n", get_param(cluster_it->first), get_param(cluster_it->opt), get_param(cluster_it->last));
+      //printf("cluster_it first=%f opt=%f last=%f\n", get_param(cluster_it->first), get_param(cluster_it->opt), get_param(cluster_it->last));
       new_cl.sign = cluster_it->sign;
       ClusterList::iterator new_it = ptr_list.insert(insert_it, new_cl);
       move_to_opt(new_it);
-      printf("second new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
+      //printf("second new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
     }
   }
 }
@@ -696,6 +696,7 @@ void L1LossMapFun::move_left(Coefs &mit){
   double intercept = cost_before -param_before*mit.Linear;
   double cost_after = mit.Linear*param_after+intercept;
   mit.Constant = cost_after-mit.Linear*param_after;
+  moves++;
 }
 
 void L1LossMapFun::move_right(Coefs &mit){
@@ -708,6 +709,7 @@ void L1LossMapFun::move_right(Coefs &mit){
   double cost_after = mit.Linear*param_after+mit.Constant;
   mit.Linear += get_Linear_diff(mit);
   mit.Constant = cost_after-mit.Linear*param_after;
+  moves++;
 }
 
 double L1LossMapFun::get_param(L1LossMap::iterator it){

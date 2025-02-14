@@ -26,6 +26,7 @@ Rcpp::List pfpop_map_interface
   Rcpp::IntegerVector best_N_segs(1);
   Rcpp::IntegerVector map_size_vec(N_data);
   Rcpp::IntegerVector list_size_vec(N_data);
+  Rcpp::IntegerVector num_moves_vec(N_data);
   int status = pfpop_map
     (&degrees_vec[0],
      penalty,
@@ -44,7 +45,8 @@ Rcpp::List pfpop_map_interface
      &min_Constant_vec[0],
      &best_N_segs[0],
      &map_size_vec[0],
-     &list_size_vec[0]);
+     &list_size_vec[0],
+     &num_moves_vec[0]);
   if(status==ERROR_PENALTY_NEGATIVE || status==ERROR_PENALTY_NOT_FINITE){
     Rcpp::stop("penalty=%f must be non-negative", penalty);
   }
@@ -89,7 +91,8 @@ Rcpp::List pfpop_map_interface
        Rcpp::Named("min_Linear", min_Linear_vec),
        Rcpp::Named("min_Constant", min_Constant_vec),
        Rcpp::Named("map_size", map_size_vec),
-       Rcpp::Named("list_size", list_size_vec))));
+       Rcpp::Named("list_size", list_size_vec),
+       Rcpp::Named("num_moves", num_moves_vec))));
 }
 
 // [[Rcpp::export]]

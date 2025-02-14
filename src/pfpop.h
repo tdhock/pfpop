@@ -20,7 +20,7 @@ int pfpop_map
  double*, double*,
  double*, double*,
  double*, double*,
- int*, int*, int*);
+ int*, int*, int*, int*);
 int decode
 (const int *best_change_ptr,
  const double *best_cost_ptr,
@@ -91,7 +91,7 @@ public:
   ClusterList::iterator cluster_it;
   double Linear,Constant,min_param,max_param,weight,angle;
   double cost;
-  int step;
+  int step, moves;
   L1LossMapFun();
   void all_pointers();
   void update_coefs(Coefs&,int,double,double);
@@ -112,7 +112,7 @@ public:
   double get_Linear_diff(Coefs&);
   double get_param(L1LossMap::iterator);
   double get_param(Coefs&);
-  int move_to_opt(ClusterList::iterator &it);
+  void move_to_opt(ClusterList::iterator &it);
   void move_to_diff(L1LossMap::iterator &it, Cluster *p, move_it_fun_ptr);
   double min();
   double max();
