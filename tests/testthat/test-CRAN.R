@@ -145,6 +145,10 @@ plot_check <- function(gres, result){
 
 data_vec <- c(10, 200, 350, 330)
 data_vec <- c(30, 20, 335, 10, 325, 340, 330, 320, 310, 300)
+data_vec <- c(30, 20, 335, 10, 325)
+(result <- pfpop_map_verbose(data_vec))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+plot_check(gres, result)
 
 gdist <- function(point, data_vec){
   abs_vec <- abs(point-data_vec)

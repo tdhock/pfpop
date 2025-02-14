@@ -658,46 +658,31 @@ void L1LossMapFun::move_if_zero(move_it_fun_ptr move, Coefs &mit){
 
 void L1LossMapFun::move_left(Coefs &mit){
   double param_before=get_param(mit);
+  double cost_before = mit.Linear*param_before+mit.Constant;
   double ldiff = get_Linear_diff(mit);
   if(mit.it == loss_map.begin()){
-    //update_coefs(mit, -1, 0, MAX_ANGLE);
     mit.it = loss_map.end();
     // move left through 0,360 always happens on a flat cost, so no
     // coef update needed.
   }
   mit.it--;
   double param_after = get_param(mit);
-  mit.update_coefs(-1, param_before, param_after, ldiff);
+  mit.Linear -= ldiff;
+  double intercept = cost_before -param_before*mit.Linear;
+  double cost_after = mit.Linear*param_after+intercept;
+  mit.Constant = cost_after-mit.Linear*param_after;
 }
 
 void L1LossMapFun::move_right(Coefs &mit){
-  double param_before=get_param(mit);
   mit.it++;
   if(mit.it == loss_map.end()){
-    //update_coefs(mit, 1, MAX_ANGLE, 0);
     mit.it = loss_map.begin();
+    mit.Constant += mit.Linear*MAX_ANGLE;
   }
   double param_after=get_param(mit);
-  double ldiff = get_Linear_diff(mit);
-  mit.update_coefs(1, param_before, param_after, ldiff);
-}
-
-void Coefs::update_coefs
-(int sign, double param_before, double param_after, double ldiff){
-  double slope, intercept;
-  printf("update begin Linear=%f Constant=%f\n", Linear, Constant);
-  if(sign == 1){
-    slope = Linear;
-    intercept = Constant;
-  }else{
-    slope = Linear-ldiff;
-    double cost_before = Linear*param_before+Constant;
-    intercept = cost_before -param_before*slope;
-  }
-  double cost_after = slope*param_after+intercept;
-  Linear += sign*ldiff;
-  Constant = cost_after-Linear*param_after;
-  printf("update end Linear=%f Constant=%f\n", Linear, Constant);
+  double cost_after = mit.Linear*param_after+mit.Constant;
+  mit.Linear += get_Linear_diff(mit);
+  mit.Constant = cost_after-mit.Linear*param_after;
 }
 
 double L1LossMapFun::get_param(L1LossMap::iterator it){
