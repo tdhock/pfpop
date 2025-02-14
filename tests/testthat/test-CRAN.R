@@ -144,10 +144,13 @@ plot_check <- function(gres, result){
 ## plot_check(gres, result)
 
 data_vec <- c(30, 20, 335, 10, 325, 340, 330, 320, 310, 300)
-data_vec <- c(310, 300, 50, 60, 70)
+data_vec <- c(310, 300, 50, 60, 70, 185, 190, 200)
+(result <- pfpop_map_verbose(data_vec))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+plot_check(gres, result)
 
 test_that("clusters split", {
-  data_vec <- c(10, 200, 40)
+  data_vec <- c(10, 200, 40, 50)
   (result <- pfpop_map_verbose(data_vec))
   if(interactive()){
     gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
@@ -155,6 +158,11 @@ test_that("clusters split", {
   }
   sign_data_counts <- result$clusters[, .(clusters=.N), keyby=.(data_i,sign)]
   expect_equal(sign_data_counts$clusters, c(1,1,1,1,3,3))
+  cl2 <- result$clusters[data_i==2][order(first_param)]
+  expect_equal(cl2$first_param, c(10,40,50,190,200,220))
+  expect_equal(cl2$opt_param, c(10,40,50,190,200,220))
+  expect_equal(cl2$last_param, c(10,40,50,190,200,220))
+  expect_equal(cl2$sign, c(1,-1,1,-1,1,-1))
 })
 
 gdist <- function(point, data_vec){
