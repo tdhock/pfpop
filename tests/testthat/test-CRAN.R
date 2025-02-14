@@ -144,8 +144,11 @@ plot_check <- function(gres, result){
 ## plot_check(gres, result)
 
 data_vec <- c(30, 20, 335, 10, 325, 340, 330, 320, 310, 300)
-  data_vec <- c(10, 200, 40, 50, 60, 70, 205, 210, 215, 220)
-data_vec <- c(310, 300, 50, 60, 70, 185, 190, 200)
+data_vec <- c(10, 200, 40, 50, 60, 70, 205, 210, 215, 220)
+data_vec <- c(10, 20,    30,    40,50,    60, 70, 80, 90, 100)#best case
+data_vec <- c(10, 20+180,40,50+180,80,90+180)#worst case
+N <- 10
+data_vec <- seq(0,90,l=N)+rep(c(0,180),l=N)
 (result <- pfpop_map_verbose(data_vec))
 gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 plot_check(gres, result)
