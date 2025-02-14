@@ -112,6 +112,7 @@ public:
   double get_Linear_diff(Coefs&);
   double get_param(L1LossMap::iterator);
   double get_param(Coefs&);
+  int move_to_opt(ClusterList::iterator &it);
   void move_to_diff(L1LossMap::iterator &it, Cluster *p, move_it_fun_ptr);
   double min();
   double max();

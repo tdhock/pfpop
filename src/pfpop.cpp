@@ -481,15 +481,25 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
       move_left(it->last);
     }
     //printf("%f after moving last sign=%d\n", get_Linear_diff(it->last), it->sign);
-    if(prev_Linear(it->opt) * it->sign >= 0){
-      //printf("Linear=%f prev=%f sign=%d move opt left\n", it->opt.Linear, prev_Linear(it->opt), it->sign);
-      move_left(it->opt);
-    }else if(it->opt.Linear * it->sign < 0){
-      //printf("move opt right\n");
-      move_right(it->opt);
-    }
+    move_to_opt(it);
   }
 }
+
+int L1LossMapFun::move_to_opt(ClusterList::iterator &it){
+  int moves=0;
+  while(prev_Linear(it->opt) * it->sign >= 0){
+    //printf("Linear=%f prev=%f sign=%d move opt left\n", it->opt.Linear, prev_Linear(it->opt), it->sign);
+    move_left(it->opt);
+    moves++;
+  }
+  while(it->opt.Linear * it->sign < 0){
+    //printf("move opt right\n");
+    move_right(it->opt);
+    moves++;
+  }
+  return moves;
+}
+
 
 void L1LossMapFun::all_pointers(){
   for
@@ -607,35 +617,45 @@ void L1LossMapFun::piece
 	 min_param,
 	 get_param(cluster_it->opt));
       ClusterList::iterator insert_it = cluster_it;
+      L1LossMap::iterator orig_end;
       if(moving_left){
 	move = &L1LossMapFun::move_left;
+	orig_end = cluster_it->first.it;
       }else{
 	move = &L1LossMapFun::move_right;
+	orig_end = cluster_it->last.it;
 	insert_it++;
       }
       //printf("before while\n");
       while(new_cl.opt.it != it){
+	if(moving_left){
+	  cluster_it->first.it = new_cl.opt.it;
+	}else{
+	  cluster_it->last.it = new_cl.opt.it;
+	}
 	(this->*move)(new_cl.opt);
       }
       //printf("after while\n");
-      new_cl.first.it = cluster_it->opt.it;
-      new_cl.last.it = cluster_it->opt.it;
+      new_cl.first.it = new_cl.opt.it;
+      new_cl.last.it = new_cl.opt.it;
       //new_cl.optimize();
-      ClusterList::iterator new_it = ptr_list.insert(insert_it, new_cl);
-      //printf("made it past insert\n");
-      if(moving_left){
-	new_cl.first.it = cluster_it->first.it;
-	cluster_it->first.it = new_cl.opt.it;
-	cluster_it->first.it++;
-	insert_it = new_it;
-      }else{
-	new_cl.last.it = cluster_it->first.it;
-	cluster_it->last.it = new_cl.opt.it;
-	cluster_it->last.it--;
-      }
-      //new_cl.optimize();
-      new_cl.sign = -cluster_it->sign;
       ptr_list.insert(insert_it, new_cl);
+      printf("first new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
+      //printf("made it past insert\n");
+      (this->*move)(new_cl.opt);//keep going one move past the new bkpt.
+      if(moving_left){
+	new_cl.first.it = orig_end;
+	new_cl.last.it = new_cl.opt.it;
+      }else{
+	new_cl.first.it = new_cl.opt.it;
+	new_cl.last.it = orig_end;
+      }
+      move_to_opt(cluster_it);
+      printf("cluster_it first=%f opt=%f last=%f\n", get_param(cluster_it->first), get_param(cluster_it->opt), get_param(cluster_it->last));
+      new_cl.sign = cluster_it->sign;
+      ClusterList::iterator new_it = ptr_list.insert(insert_it, new_cl);
+      move_to_opt(new_it);
+      printf("second new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
     }
   }
 }
