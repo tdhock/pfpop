@@ -74,14 +74,14 @@ public:
 class Cluster {
 public:
   int sign;
-  Mapit first, last;
+  Coefs first, last;
   Coefs opt;
   Cluster();
   void init(L1LossMap::iterator, double);
 };
 
 class L1LossMapFun;
-typedef void (L1LossMapFun::*move_it_fun_ptr) (Mapit&);
+typedef void (L1LossMapFun::*move_it_fun_ptr) (Coefs&);
 typedef std::list<Cluster> ClusterList;
 
 class L1LossMapFun {
@@ -94,12 +94,12 @@ public:
   int step;
   L1LossMapFun();
   void all_pointers();
-  void update_coefs(Mapit&,int,double,double);
-  void move_left(Mapit&);
-  void move_left_if_zero(Mapit&);
-  void move_right(Mapit&);
-  void move_right_if_zero(Mapit&);
-  void move_if_zero(move_it_fun_ptr,Mapit&);
+  void update_coefs(Coefs&,int,double,double);
+  void move_left(Coefs&);
+  void move_left_if_zero(Coefs&);
+  void move_right(Coefs&);
+  void move_right_if_zero(Coefs&);
+  void move_if_zero(move_it_fun_ptr,Coefs&);
   void write_min_or_max(int,int,double*,double*,double*,double*);
   void maybe_move_right(Cluster&,L1LossMap::iterator);
   void maybe_move_erase(L1LossMap::iterator);
@@ -109,9 +109,9 @@ public:
   void   add_Linear_diff(L1LossMap::iterator, double);
   double prev_Linear(Coefs&);
   double get_Linear_diff(L1LossMap::iterator);
-  double get_Linear_diff(Mapit&);
+  double get_Linear_diff(Coefs&);
   double get_param(L1LossMap::iterator);
-  double get_param(Mapit&);
+  double get_param(Coefs&);
   void move_to_diff(L1LossMap::iterator &it, Cluster *p, move_it_fun_ptr);
   double min();
   double max();

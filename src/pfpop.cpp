@@ -338,7 +338,7 @@ int pfpop_map
   bool verbose = strcmp(verbose_file, "") != 0;
   if(verbose){
     verbose_fstream.open(verbose_file);
-    verbose_fstream << "data_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_diff" << "\t" << "opt_diff" << "\t" << "last_diff" << "\t" << "Linear" << "\t" << "Constant" << "\n";
+    verbose_fstream << "data_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_diff" << "\t" << "opt_diff" << "\t" << "last_diff" << "\t" << "Linear" << "\t" << "Constant" << "\t" << "sign" << "\n";
   }
   L1LossMapFun cost_model;
   cost_model.cost = 0;
@@ -395,7 +395,9 @@ int pfpop_map
 	  cost_model.get_Linear_diff(cluster_it->first) << "\t" <<
 	  cost_model.get_Linear_diff(cluster_it->opt) << "\t" <<
 	  cost_model.get_Linear_diff(cluster_it->last) << "\t" <<
-	  cluster_it->opt.Linear << "\t" << cluster_it->opt.Constant << "\n";
+	  cluster_it->opt.Linear << "\t" <<
+	  cluster_it->opt.Constant << "\t" <<
+	  cluster_it->sign << "\n";
       }
     }
   }
@@ -403,7 +405,7 @@ int pfpop_map
   return 0;
 }
 
-double L1LossMapFun::get_param(Mapit &mit){
+double L1LossMapFun::get_param(Coefs &mit){
   return get_param(mit.it);
 }
 
@@ -462,8 +464,31 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
   // }
   //step = 6;//split pointers
   //all_pointers();
-  step = 7;//move opt iterators.
-  all_pointers();
+  //step = 7;//move opt iterators.
+  for
+    (ClusterList::iterator it=ptr_list.begin();
+     it != ptr_list.end();
+     it++){
+    move_left(it->first);
+    if(sgn(get_Linear_diff(it->first))!=it->sign){
+      move_right(it->first);
+    }
+    //printf("%f before moving last sign=%d\n", get_Linear_diff(it->last), it->sign);
+    move_right(it->last);
+    //printf("%f after move right sign=%d\n", get_Linear_diff(it->last), it->sign);
+    if(sgn(get_Linear_diff(it->last))!=it->sign){
+      //printf("moving last left\n");
+      move_left(it->last);
+    }
+    //printf("%f after moving last sign=%d\n", get_Linear_diff(it->last), it->sign);
+    if(prev_Linear(it->opt) * it->sign >= 0){
+      printf("Linear=%f prev=%f sign=%d move opt left\n", it->opt.Linear, prev_Linear(it->opt), it->sign);
+      move_left(it->opt);
+    }else if(it->opt.Linear * it->sign < 0){
+      printf("move opt right\n");
+      move_right(it->opt);
+    }
+  }
 }
 
 void L1LossMapFun::all_pointers(){
@@ -491,6 +516,7 @@ double L1LossMapFun::min_or_max(int sign){
 }
 
 double L1LossMapFun::get_param_or_mid(const Cluster cl){
+  return(get_param(cl.opt.it));
   if(cl.opt.Linear!=0)return(get_param(cl.opt.it));
   if(cl.opt.it == loss_map.end())return INFINITY;
   double last_param, first_param;
@@ -607,35 +633,19 @@ void L1LossMapFun::piece
       ptr_list.insert(insert_it, new_cl);
     }
   }
-  if(step==7){//move opt it
-    move_left(cluster_it->first);
-    if(sgn(get_Linear_diff(cluster_it->first))!=cluster_it->sign){
-      move_right(cluster_it->first);
-    }
-    move_right(cluster_it->last);
-    if(sgn(get_Linear_diff(cluster_it->last))!=cluster_it->sign){
-      move_left(cluster_it->last);
-    }
-    if(prev_Linear(cluster_it->opt) * cluster_it->sign <= 0){
-      move_left(cluster_it->opt);
-    }
-    if(cluster_it->opt.Linear * cluster_it->sign > 0){
-      move_right(cluster_it->opt);
-    }
-  }
 }
 
 double L1LossMapFun::prev_Linear(Coefs &mit){
   return mit.Linear - get_Linear_diff(mit);
 }
 
-void L1LossMapFun::move_right_if_zero(Mapit &mit){
+void L1LossMapFun::move_right_if_zero(Coefs &mit){
   move_if_zero(&L1LossMapFun::move_right, mit);
 }
-void L1LossMapFun::move_left_if_zero(Mapit &mit){
+void L1LossMapFun::move_left_if_zero(Coefs &mit){
   move_if_zero(&L1LossMapFun::move_left, mit);
 }
-void L1LossMapFun::move_if_zero(move_it_fun_ptr move, Mapit &mit){
+void L1LossMapFun::move_if_zero(move_it_fun_ptr move, Coefs &mit){
   if(mit.it != loss_map.end() && mit.it->second.Linear_diff==0){
     (this->*move)(mit);
     if(mit.it->second.Linear_diff==0){
@@ -646,43 +656,50 @@ void L1LossMapFun::move_if_zero(move_it_fun_ptr move, Mapit &mit){
   }
 }
 
-void L1LossMapFun::move_left(Mapit &mit){
-  update_coefs(mit, -1, get_param(mit), get_param(mit));
+void L1LossMapFun::move_left(Coefs &mit){
+  double param_before=get_param(mit);
+  double ldiff = get_Linear_diff(mit);
   if(mit.it == loss_map.begin()){
-    update_coefs(mit, -1, 0, MAX_ANGLE);
+    //update_coefs(mit, -1, 0, MAX_ANGLE);
     mit.it = loss_map.end();
   }
   mit.it--;
+  double param_after = get_param(mit);
+  mit.update_coefs(-1, param_before, param_after, ldiff);
 }
 
-void L1LossMapFun::move_right(Mapit &mit){
+void L1LossMapFun::move_right(Coefs &mit){
+  double param_before=get_param(mit);
   mit.it++;
   if(mit.it == loss_map.end()){
-    update_coefs(mit, 1, MAX_ANGLE, 0);
+    //update_coefs(mit, 1, MAX_ANGLE, 0);
     mit.it = loss_map.begin();
   }
-  update_coefs(mit, 1, get_param(mit), get_param(mit));
-}
-
-void L1LossMapFun::update_coefs
-(Mapit &mit, int sign, double min_param, double max_param){
-  mit.update_coefs(sign, min_param, max_param, get_Linear_diff(mit.it));
-}
-
-void Mapit::update_coefs
-(int sign, double param_before, double param_after, double ldiff){
-  // do nothing.
+  double param_after=get_param(mit);
+  double ldiff = get_Linear_diff(mit);
+  mit.update_coefs(1, param_before, param_after, ldiff);
 }
 
 void Coefs::update_coefs
 (int sign, double param_before, double param_after, double ldiff){
-  double cost = Constant + Linear*param_before;
+  double slope, intercept;
+  printf("update begin Linear=%f Constant=%f\n", Linear, Constant);
+  if(sign == 1){
+    slope = Linear;
+    intercept = Constant;
+  }else{
+    slope = Linear-ldiff;
+    double cost_before = Linear*param_before+Constant;
+    intercept = cost_before -param_before*slope;
+  }
+  double cost_after = slope*param_after+intercept;
   Linear += sign*ldiff;
-  Constant = cost-Linear*param_after;
+  Constant = cost_after-Linear*param_after;
+  printf("update end Linear=%f Constant=%f\n", Linear, Constant);
 }
 
 double L1LossMapFun::get_param(L1LossMap::iterator it){
-  if(it == loss_map.end())return MAX_ANGLE;
+  if(it == loss_map.end())return INFINITY;
   return it->first;
 }
 
@@ -724,7 +741,7 @@ int L1LossMapFun::get_data_i(L1LossMap::iterator it){
   return it->second.data_i;
 }
 
-double L1LossMapFun::get_Linear_diff(Mapit &mit){
+double L1LossMapFun::get_Linear_diff(Coefs &mit){
   return get_Linear_diff(mit.it);
 }
 

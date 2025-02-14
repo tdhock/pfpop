@@ -24,6 +24,8 @@ cldt <- function(data_i, opt, start, end){
     start=as.numeric(start),
     end=as.numeric(end)
   )[
+    ##start != end
+  ][
   , noInf := start <= end
   ]
   data.table(opt, rbind(
@@ -132,7 +134,7 @@ plot_check <- function(gres, result){
 ## plot_check(gres, result)
 
 data_vec <- c(10, 200, 350, 330)
-data_vec <- c(10, 20, 30, 40)
+data_vec <- c(30, 10,20)
 (result <- pfpop_map_verbose(data_vec))
 gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 plot_check(gres, result)
