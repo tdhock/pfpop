@@ -462,8 +462,8 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
   //   it = next_it;
   //   next_it++;
   // }
-  //step = 6;//split pointers
-  //all_pointers();
+  step = 6;//split pointers
+  all_pointers();
   //step = 7;//move opt iterators.
   for
     (ClusterList::iterator it=ptr_list.begin();
@@ -482,10 +482,10 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
     }
     //printf("%f after moving last sign=%d\n", get_Linear_diff(it->last), it->sign);
     if(prev_Linear(it->opt) * it->sign >= 0){
-      printf("Linear=%f prev=%f sign=%d move opt left\n", it->opt.Linear, prev_Linear(it->opt), it->sign);
+      //printf("Linear=%f prev=%f sign=%d move opt left\n", it->opt.Linear, prev_Linear(it->opt), it->sign);
       move_left(it->opt);
     }else if(it->opt.Linear * it->sign < 0){
-      printf("move opt right\n");
+      //printf("move opt right\n");
       move_right(it->opt);
     }
   }
@@ -539,6 +539,7 @@ double L1LossMapFun::get_cost_at_ptr(const Cluster cl){
 }
 
 bool between(double first, double param, double last){
+  if(first==last)return false;
   double min, max;
   if(first < last){
     min = first;
@@ -589,21 +590,22 @@ void L1LossMapFun::piece
     }
     // TODO adjust pointers if sign changed on edge!!
   }
-  if
-    (step==6 &&//split if necessary
-     diff_Linear_at_min &&
-     between(cluster_it->first.it->first, min_param, cluster_it->last.it->first)
-     ){
+  //split if necessary
+  if(step==6 && between
+     (get_param(cluster_it->first),
+      min_param,
+      get_param(cluster_it->last))){
     L1LossMap::iterator it = loss_map.find(min_param);
-    if(it!=loss_map.end() && cluster_it->sign != sgn(it->second.Linear_diff)){
+    if(it!=loss_map.end() && // TODO not necessary?
+       cluster_it->sign != sgn(it->second.Linear_diff)){
       Cluster new_cl;
       new_cl.sign = -cluster_it->sign;
       new_cl.opt = cluster_it->opt;
       move_it_fun_ptr move;
       bool moving_left = between
-	(cluster_it->first.it->first,
+	(get_param(cluster_it->first),
 	 min_param,
-	 cluster_it->opt.it->first);
+	 get_param(cluster_it->opt));
       ClusterList::iterator insert_it = cluster_it;
       if(moving_left){
 	move = &L1LossMapFun::move_left;
@@ -611,13 +613,16 @@ void L1LossMapFun::piece
 	move = &L1LossMapFun::move_right;
 	insert_it++;
       }
+      //printf("before while\n");
       while(new_cl.opt.it != it){
 	(this->*move)(new_cl.opt);
       }
+      //printf("after while\n");
       new_cl.first.it = cluster_it->opt.it;
       new_cl.last.it = cluster_it->opt.it;
       //new_cl.optimize();
-      ClusterList::iterator new_it = ptr_list.insert(cluster_it, new_cl);
+      ClusterList::iterator new_it = ptr_list.insert(insert_it, new_cl);
+      //printf("made it past insert\n");
       if(moving_left){
 	new_cl.first.it = cluster_it->first.it;
 	cluster_it->first.it = new_cl.opt.it;
