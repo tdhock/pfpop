@@ -662,6 +662,8 @@ void L1LossMapFun::move_left(Coefs &mit){
   if(mit.it == loss_map.begin()){
     //update_coefs(mit, -1, 0, MAX_ANGLE);
     mit.it = loss_map.end();
+    // move left through 0,360 always happens on a flat cost, so no
+    // coef update needed.
   }
   mit.it--;
   double param_after = get_param(mit);

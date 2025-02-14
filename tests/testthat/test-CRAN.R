@@ -35,9 +35,13 @@ cldt <- function(data_i, opt, start, end){
 }
 plot_check <- function(gres, result){
   map_dt <- mean_cost(result)
-  print(cluster.dt <- result$clusters[, rbind(
+  cluster.dt <- result$clusters[, rbind(
     cldt(data_i, "before", first_param, opt_param),
-    cldt(data_i, "after", opt_param, last_param))])
+    cldt(data_i, "after", opt_param, last_param))]
+  lab.dt <- melt(
+    result$clusters,
+    measure.vars=measure(
+      pointer, value.name, pattern="(first|opt|last)_(param|diff)"))
   geodesichange::plot_model(gres$model)+
     theme_bw()+
     theme(panel.margin=grid::unit(0,"lines"))+
@@ -49,9 +53,15 @@ plot_check <- function(gres, result){
       data=cluster.dt,
       alpha=0.5,
       color="black")+
+    geom_label(aes(
+      param, ifelse(diff<0, -Inf, Inf),
+      vjust=ifelse(diff<0, 0, 1),
+      label=diff),
+      data=lab.dt,
+      alpha=0.5)+
     scale_fill_manual(values=c(
-      before="black",
-      after="red"))+
+      before="grey50",
+      after="violet"))+
     geom_point(aes(
       param, cost_mean, color=limit),
       size=4,
@@ -134,8 +144,30 @@ plot_check <- function(gres, result){
 ## plot_check(gres, result)
 
 data_vec <- c(10, 200, 350, 330)
-data_vec <- c(30, 10,20)
-(result <- pfpop_map_verbose(data_vec))
-gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
-plot_check(gres, result)
+data_vec <- c(30, 20, 335, 10, 325, 340, 330, 320, 310, 300)
 
+gdist <- function(point, data_vec){
+  abs_vec <- abs(point-data_vec)
+  d_vec <- pmin(abs_vec, 360-abs_vec)
+  sum(d_vec)
+}
+
+test_that("move max from 370 to 10 has correct cost", {
+  data_vec <- c(170, 200, 190)
+  (result <- pfpop_map_verbose(data_vec))
+  if(interactive()){
+    gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+    plot_check(gres, result)
+  }
+  expect_equal(result$iterations$max_cost, c(180, 330, 510))
+})
+
+test_that("move min from 355 to 25 has correct cost", {
+  data_vec <- c(355, 25, 35)
+  (result <- pfpop_map_verbose(data_vec))
+  if(interactive()){
+    gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+    plot_check(gres, result)
+  }
+  expect_equal(result$iterations$min_cost, c(0, 30, 40))
+})
