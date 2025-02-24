@@ -1,12 +1,15 @@
 library(testthat)
 library(ggplot2)
 library(data.table)
+pfpop::pfpop_list(1,Inf)
 
 pfpop_map_verbose <- function(degrees_vec, penalty=Inf, weight_vec = rep(1, length(degrees_vec)), verbose_file=tempfile()){
   result <- pfpop::pfpop_map(degrees_vec, penalty, weight_vec, verbose_file)
   result$clusters <- fread(verbose_file)
   result
 }
+pfpop_map_verbose(1)
+pfpop_map_verbose(1:5)
 
 mean_cost <- function(result)melt(
   data.table(result$iterations)[, data_i := .I-1],
@@ -149,6 +152,7 @@ data_vec <- c(10, 20,    30,    40,50,    60, 70, 80, 90, 100)#best case
 data_vec <- c(10, 20+180,40,50+180,80,90+180)#worst case
 N <- 10
 data_vec <- seq(0,90,l=N)+rep(c(0,180),l=N)
+data_vec <- c(rnorm(3,60,10), rnorm(4, 180,10), rnorm(5, 300,10), rnorm(3,60,10))
 (result <- pfpop_map_verbose(data_vec))
 gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
 plot_check(gres, result)
