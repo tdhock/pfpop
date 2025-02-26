@@ -38,17 +38,23 @@ class L1LossMapFun;
 typedef void (L1LossMapFun::*move_it_fun_ptr) (Coefs&);
 typedef std::list<Cluster> ClusterList;
 
+class CrossInfo {
+public:
+  Coefs before, after;
+  double param;
+};
+
 class L1LossMapFun {
 public:
   L1LossMap loss_map;
-  ClusterList ptr_list;
+  ClusterList ptr_list, new_list;
   ClusterList::iterator cluster_it;
   double Linear,Constant,min_param,max_param,weight,angle;
   double cost;
   int step, moves, data_i;
   L1LossMapFun();
   void all_pointers();
-  void update_coefs(Coefs&,int,double,double);
+  void update_coefs(Coefs&);
   void move_left(Coefs&);
   void move_left_if_zero(Coefs&);
   void move_right(Coefs&);
@@ -70,7 +76,8 @@ public:
   double max();
   double min_or_max(int);
   void pieces();
-  double get_cost_at_ptr(const Cluster);
+  double get_cost_at_coefs(const Coefs);
+  void push_cluster(const Cluster);
   void end_move(Cluster&, double);
   double get_param_or_mid(const Cluster);
   void min_with_constant(double);
@@ -78,4 +85,8 @@ public:
   void move_pointers();
   void move_left(L1LossMap::iterator&,Cluster*);
   void move_right(L1LossMap::iterator&,Cluster*);
+  CrossInfo crossing_before(Coefs coefs, double constant);
 };
+
+
+

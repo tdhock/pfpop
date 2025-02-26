@@ -61,14 +61,7 @@ int pfpop_map
     cost_model.moves = 0;
     cost_model.data_i = data_i;
     if(data_i != 0){
-      // if(penalty <= cost_model.min()){
-      // 	cost_model.delete_breaks(penalty);
-      // }else if(cost_model.max() <= penalty){
-      // 	// no update to cost model.
-      // }else{
-      // 	//cost_model.min_with_constant(penalty);
-      // 	return pfpop_map_ERROR_NOT_IMPLEMENTED;
-      // }
+      cost_model.min_with_constant(min_cost_ptr[data_i-1]+penalty);
     }
     // TODO to compute the mean cost instead of the total cost, we
     // divide the penalty by the previous cumsum, and add that to the
@@ -117,7 +110,7 @@ void L1LossMapFun::write_min_or_max
     (ClusterList::iterator it=ptr_list.begin();
      it != ptr_list.end();
      it++){
-    double cost = get_cost_at_ptr(*it);
+    double cost = get_cost_at_coefs(it->opt);
     if(sign*cost > sign*best[data_i]){
       best[data_i] = cost;
       if(param)param[data_i] = get_param_or_mid(*it);
@@ -207,20 +200,6 @@ void L1LossMapFun::all_pointers(){
   }
 }
 
-// double L1LossMapFun::max(){
-//   return min_or_max(1);
-// }
-
-// double L1LossMapFun::min(){
-//   return min_or_max(-1);
-// }
-
-// double L1LossMapFun::min_or_max(int sign){
-//   double best;
-//   write_min_or_max(0, -1, &best, 0, 0, 0, 0);
-//   return best;
-// }
-
 double L1LossMapFun::get_param_or_mid(const Cluster cl){
   return(get_param(cl.opt.it));
   if(cl.opt.Linear!=0)return(get_param(cl.opt.it));
@@ -240,8 +219,8 @@ double L1LossMapFun::get_param_or_mid(const Cluster cl){
   return (last_param+first_param)/2;
 }
 
-double L1LossMapFun::get_cost_at_ptr(const Cluster cl){
-  return get_param(cl.opt.it)*cl.opt.Linear+cl.opt.Constant;
+double L1LossMapFun::get_cost_at_coefs(const Coefs coefs){
+  return get_param(coefs.it)*coefs.Linear+coefs.Constant;
 }
 
 bool between(double first, double param, double last){
@@ -282,9 +261,10 @@ void L1LossMapFun::piece
       ptr_list.push_back(new_cl);
     }
   }
-  if(step==2 && min_param <= get_param(cluster_it->opt) && get_param(cluster_it->opt) < max_param){//update coefs
-    cluster_it->opt.Linear += Linear;
-    cluster_it->opt.Constant += Constant;
+  if(step==2){
+    update_coefs(cluster_it->first);
+    update_coefs(cluster_it->opt);
+    update_coefs(cluster_it->last);
   }
   if(step==4 && diff_Linear_at_min){//delete break if diff_linear=0.
     L1LossMap::iterator it = loss_map.find(min_param);
@@ -349,6 +329,13 @@ void L1LossMapFun::piece
       move_to_opt(new_it);
       //printf("second new first=%f opt=%f last=%f\n", get_param(new_cl.first), get_param(new_cl.opt), get_param(new_cl.last));
     }
+  }
+}
+
+void L1LossMapFun::update_coefs(Coefs &coefs){
+  if(min_param <= get_param(coefs) && get_param(coefs) < max_param){
+    coefs.Linear += Linear;
+    coefs.Constant += Constant;
   }
 }
 
@@ -437,6 +424,96 @@ double L1LossMapFun::get_Linear_diff(L1LossMap::iterator it){
 }
 
 void L1LossMapFun::min_with_constant(double constant){
+  new_list.clear();
+  for
+    (ClusterList::iterator it=ptr_list.begin();
+     it != ptr_list.end();
+     it++){
+    double first_cost = get_cost_at_coefs(it->first);
+    double opt_cost = get_cost_at_coefs(it->opt);
+    double last_cost = get_cost_at_coefs(it->last);
+    ClusterList::iterator next_it=it;
+    next_it++;
+    if(next_it==ptr_list.end()){
+      next_it=ptr_list.begin();
+    }
+    if(first_cost < constant && opt_cost < constant && last_cost < constant){
+      //this cluster is completely below constant, so keep.
+      push_cluster(*it);
+    }
+    if(constant < first_cost && constant < opt_cost && constant < last_cost){
+      //this cluster is completely above constant, so delete this cluster.
+      Cluster new_cl = *it;
+      new_cl.sign  = -1;
+      new_cl.opt.Linear = new_cl.first.Linear = new_cl.last.Linear = 0;
+      new_cl.opt.Constant = new_cl.first.Constant = new_cl.last.Constant = constant;
+      push_cluster(new_cl);
+    }
+    if(first_cost < constant && opt_cost < constant && constant < last_cost){
+      //first and opt are below, last is above, so this is a convex
+      //cluster with a crossing point between opt and last.
+      Cluster new_cl = *it;
+      CrossInfo cinfo = crossing_before(new_cl.last, constant);
+      // First push convex piece.
+      new_cl.last = cinfo.before;
+      push_cluster(new_cl);
+      // TODO push new breakpoint.
+      // Then push constant/concave piece.
+      Coefs coefs;//TODO.
+      coefs.Constant = constant;
+      coefs.Linear = 0;
+      new_cl.first = new_cl.opt = new_cl.last = coefs;
+      push_cluster(new_cl);
+    }
+    if(first_cost < constant && constant < opt_cost && constant < last_cost){
+      //first is below, and opt/last are above, so this is a concave
+      //cluster with a crossing point between first and opt.
+    }
+    if(constant < first_cost && constant < opt_cost && last_cost < constant){
+      //first/opt are above, and last is below, so this is a concave
+      //cluster with a crossing point between opt and last.
+    }
+    if(constant < first_cost && opt_cost < constant && last_cost < constant){
+      //first is above, and opt/last are below, so this is a convex
+      //cluster with a crossing point between first and opt.
+    }
+    if(first_cost < constant && constant < opt_cost && last_cost < constant){
+      // concave cluster with two crossing points.
+    }
+    if(constant < first_cost && opt_cost < constant && constant < last_cost){
+      // convex cluster with two crossing points.
+    }
+  }
+  // loop over new clusters, erase breakpoints in new constant clusters.
+  for
+    (ClusterList::iterator it=new_list.begin();
+     it != new_list.end();
+     it++){
+    //TODO.
+  }
+  ptr_list = new_list;
+}
+
+CrossInfo L1LossMapFun::crossing_before
+(Coefs coefs, double constant){
+  int orig_sign = sgn(get_cost_at_coefs(coefs)-constant);
+  int new_sign = orig_sign;
+  CrossInfo cinfo;
+  while(orig_sign == new_sign){
+    cinfo.after = coefs;
+    move_left(coefs);
+    new_sign = sgn(get_cost_at_coefs(coefs)-constant);
+  }
+  cinfo.before = coefs;
+  cinfo.param = (constant-coefs.Constant)/coefs.Linear;
+  if(cinfo.param>=MAX_ANGLE){
+    cinfo.param -= MAX_ANGLE;
+  }
+  return cinfo;
+}
+
+void L1LossMapFun::push_cluster(const Cluster cl){
+  //TODO.
 }
 
 L1LossMapFun::L1LossMapFun(){
