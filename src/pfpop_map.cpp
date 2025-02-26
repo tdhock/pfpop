@@ -491,7 +491,7 @@ void L1LossMapFun::min_with_constant(double constant){
      it++){
     //TODO.
   }
-  ptr_list = new_list;
+  //ptr_list = new_list;//TODO.
 }
 
 CrossInfo L1LossMapFun::crossing_before
@@ -513,7 +513,18 @@ CrossInfo L1LossMapFun::crossing_before
 }
 
 void L1LossMapFun::push_cluster(const Cluster cl){
-  //TODO.
+  if(new_list.empty()){
+    new_list.push_back(cl);
+    return;
+  }
+  ClusterList::iterator last_it = new_list.end();
+  last_it--;
+  if(last_it->sign == cl.sign){
+    last_it->last = cl.last;
+    move_to_opt(last_it);
+    return;
+  }
+  new_list.push_back(cl);
 }
 
 L1LossMapFun::L1LossMapFun(){
