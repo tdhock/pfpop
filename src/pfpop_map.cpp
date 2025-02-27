@@ -139,6 +139,10 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
     (ClusterList::iterator it=ptr_list.begin();
      it != ptr_list.end();
      it++){
+    double first_cost = get_cost_at_coefs(it->first);
+    double opt_cost = get_cost_at_coefs(it->opt);
+    double last_cost = get_cost_at_coefs(it->last);
+    printf("add first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
     move_right_if_zero(it->first);
     move_right_if_zero(it->opt);// points to piece on and after the breakpoint.
     move_left_if_zero(it->last);
@@ -162,6 +166,11 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
     (ClusterList::iterator it=ptr_list.begin();
      it != ptr_list.end();
      it++){
+    double first_cost, opt_cost, last_cost;
+    first_cost = get_cost_at_coefs(it->first);
+    opt_cost = get_cost_at_coefs(it->opt);
+    last_cost = get_cost_at_coefs(it->last);
+    printf("mid first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
     move_left(it->first);
     if(sgn(get_Linear_diff(it->first))!=it->sign){
       move_right(it->first);
@@ -174,6 +183,10 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
       move_left(it->last);
     }
     //printf("%f after moving last sign=%d\n", get_Linear_diff(it->last), it->sign);
+    first_cost = get_cost_at_coefs(it->first);
+    opt_cost = get_cost_at_coefs(it->opt);
+    last_cost = get_cost_at_coefs(it->last);
+    printf("before move_to_opt first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
     move_to_opt(it);
   }
 }
@@ -223,7 +236,11 @@ double L1LossMapFun::get_cost_at_coefs(const Coefs coefs){
   return get_param(coefs.it)*coefs.Linear+coefs.Constant;
 }
 
-bool between(double first, double param, double last){
+bool cost_between(double x, double m, double y){
+  return (x<m && m<y) || (y<m && m<x);
+}
+
+bool param_between(double first, double param, double last){
   if(first==last)return false;
   double min, max;
   if(first < last){
@@ -274,7 +291,7 @@ void L1LossMapFun::piece
     // TODO adjust pointers if sign changed on edge!!
   }
   //split if necessary
-  if(step==6 && between
+  if(step==6 && param_between
      (get_param(cluster_it->first),
       min_param,
       get_param(cluster_it->last))){
@@ -284,7 +301,7 @@ void L1LossMapFun::piece
       Cluster new_cl = *cluster_it;
       new_cl.sign = -cluster_it->sign;
       move_it_fun_ptr move;
-      bool moving_left = between
+      bool moving_left = param_between
 	(get_param(cluster_it->first),
 	 min_param,
 	 get_param(cluster_it->opt));
@@ -362,19 +379,15 @@ void L1LossMapFun::move_if_zero(move_it_fun_ptr move, Coefs &mit){
 
 void L1LossMapFun::move_left(Coefs &mit){
   double param_before=get_param(mit);
-  double cost_before = mit.Linear*param_before+mit.Constant;
+  double cost_before = get_cost_at_coefs(mit);
   double ldiff = get_Linear_diff(mit);
   if(mit.it == loss_map.begin()){
     mit.it = loss_map.end();
-    // move left through 0,360 always happens on a flat cost, so no
-    // coef update needed.
+    param_before += MAX_ANGLE;
   }
   mit.it--;
-  double param_after = get_param(mit);
   mit.Linear -= ldiff;
-  double intercept = cost_before -param_before*mit.Linear;
-  double cost_after = mit.Linear*param_after+intercept;
-  mit.Constant = cost_after-mit.Linear*param_after;
+  mit.Constant = cost_before - mit.Linear*param_before;
   moves++;
 }
 
@@ -423,8 +436,18 @@ double L1LossMapFun::get_Linear_diff(L1LossMap::iterator it){
   return it->second;
 }
 
+void L1LossMapFun::push_constant(Cluster new_cl){
+  // iterators should be set prior.
+  new_cl.sign  = -1;
+  new_cl.data_i = data_i;
+  new_cl.opt.Linear = new_cl.first.Linear = new_cl.last.Linear = 0;
+  new_cl.opt.Constant = new_cl.first.Constant = new_cl.last.Constant = Constant;
+  push_cluster(new_cl);
+}
+
 void L1LossMapFun::min_with_constant(double constant){
   new_list.clear();
+  Constant = constant;
   for
     (ClusterList::iterator it=ptr_list.begin();
      it != ptr_list.end();
@@ -432,28 +455,23 @@ void L1LossMapFun::min_with_constant(double constant){
     double first_cost = get_cost_at_coefs(it->first);
     double opt_cost = get_cost_at_coefs(it->opt);
     double last_cost = get_cost_at_coefs(it->last);
-    ClusterList::iterator next_it=it;
-    next_it++;
-    if(next_it==ptr_list.end()){
-      next_it=ptr_list.begin();
-    }
+    printf("first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
+    //first handle this cluster.
     if(first_cost < constant && opt_cost < constant && last_cost < constant){
       //this cluster is completely below constant, so keep.
+      printf("completely below push_cluster\n");
       push_cluster(*it);
     }
     if(constant < first_cost && constant < opt_cost && constant < last_cost){
       //this cluster is completely above constant, so delete this cluster.
-      Cluster new_cl = *it;
-      new_cl.sign  = -1;
-      new_cl.opt.Linear = new_cl.first.Linear = new_cl.last.Linear = 0;
-      new_cl.opt.Constant = new_cl.first.Constant = new_cl.last.Constant = constant;
-      push_cluster(new_cl);
+      printf("completely above push_constant\n");
+      push_constant(*it);
     }
     if(first_cost < constant && opt_cost < constant && constant < last_cost){
       //first and opt are below, last is above, so this is a convex
       //cluster with a crossing point between opt and last.
       Cluster new_cl = *it;
-      CrossInfo cinfo = crossing_before(new_cl.last, constant);
+      CrossInfo cinfo = crossing_before(new_cl.last);
       // First push convex piece.
       new_cl.last = cinfo.before;
       push_cluster(new_cl);
@@ -483,29 +501,84 @@ void L1LossMapFun::min_with_constant(double constant){
     if(constant < first_cost && opt_cost < constant && constant < last_cost){
       // convex cluster with two crossing points.
     }
+    // then handle crossing point between this cluster and next.
+    ClusterList::iterator next_it=it;
+    next_it++;
+    if(next_it==ptr_list.end()){
+      next_it=ptr_list.begin();
+    }
+    double next_first_cost = get_cost_at_coefs(next_it->first);
+    if(cost_between(last_cost, constant, next_first_cost)){
+      CrossInfo cinfo = crossing_before(next_it->first);
+      // TODO handle equality / existing break.
+      double new_diff_sign = (last_cost<constant) ? -1 : 1;
+      double new_diff = new_diff_sign * it->last.Linear;
+      std::pair<L1LossMap::iterator, bool> result;
+      result = loss_map.insert(std::pair<double,double>(cinfo.param, new_diff));
+      L1LossMap::iterator insert_it = result.first;
+      Cluster new_cl = *it;
+      //cluster before new break.
+      if(!(last_cost<constant && it->sign==1)){
+	new_cl.last.it = insert_it;
+      }
+      if(last_cost<constant){
+	printf("push_cluster before\n");
+	push_cluster(new_cl);
+      }else{
+	printf("push_constant before\n");
+	push_constant(new_cl);
+      }
+      new_cl = *next_it;
+      //cluster after new break.
+      if(!(constant < last_cost && it->sign == -1)){
+	new_cl.first.it = insert_it;
+      }
+      if(last_cost<constant){
+	printf("push_constant after\n");
+	push_constant(new_cl);
+      }else{
+	printf("push_cluster after\n");
+	push_cluster(new_cl);
+      }
+    }
   }
+  // TODO handle first/last cluster merge.
   // loop over new clusters, erase breakpoints in new constant clusters.
   for
     (ClusterList::iterator it=new_list.begin();
      it != new_list.end();
      it++){
-    //TODO.
+    printf("data_i=%d it->data_i=%d\n", data_i, it->data_i);
+    if(it->data_i==data_i){
+      printf("deleting\n");
+      Coefs before, after;
+      it->opt = it->first;
+      after = it->first;
+      move_right(after);
+      while(after.it != it->last.it){
+	before = after;
+	move_right(after);
+	loss_map.erase(before.it);
+      }
+    }
   }
-  //ptr_list = new_list;//TODO.
+  ptr_list = new_list;//TODO.
 }
 
-CrossInfo L1LossMapFun::crossing_before
-(Coefs coefs, double constant){
-  int orig_sign = sgn(get_cost_at_coefs(coefs)-constant);
+CrossInfo L1LossMapFun::crossing_before(Coefs coefs){
+  double orig_diff = get_cost_at_coefs(coefs)-Constant;
+  int orig_sign = sgn(orig_diff);
   int new_sign = orig_sign;
   CrossInfo cinfo;
+  // this code works for both kinds of crossing (increasing and decreasing).x
   while(orig_sign == new_sign){
     cinfo.after = coefs;
     move_left(coefs);
-    new_sign = sgn(get_cost_at_coefs(coefs)-constant);
+    double new_diff = get_cost_at_coefs(coefs)-Constant;
+    new_sign = sgn(new_diff);
   }
   cinfo.before = coefs;
-  cinfo.param = (constant-coefs.Constant)/coefs.Linear;
+  cinfo.param = (Constant-coefs.Constant)/coefs.Linear;
   if(cinfo.param>=MAX_ANGLE){
     cinfo.param -= MAX_ANGLE;
   }
@@ -521,7 +594,6 @@ void L1LossMapFun::push_cluster(const Cluster cl){
   last_it--;
   if(last_it->sign == cl.sign){
     last_it->last = cl.last;
-    move_to_opt(last_it);
     return;
   }
   new_list.push_back(cl);

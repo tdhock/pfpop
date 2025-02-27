@@ -2,15 +2,13 @@ library(testthat)
 library(ggplot2)
 library(data.table)
 pfpop::pfpop_list(1,Inf)
-
 pfpop_map_verbose <- function(degrees_vec, penalty=Inf, weight_vec = rep(1, length(degrees_vec)), verbose_file=tempfile()){
   result <- pfpop::pfpop_map(degrees_vec, penalty, weight_vec, verbose_file)
   result$clusters <- fread(verbose_file)
   result
 }
 pfpop_map_verbose(1)
-pfpop_map_verbose(1:5)
-
+##pfpop_map_verbose(1:2)
 mean_cost <- function(result)melt(
   data.table(result$iterations)[, data_i := .I-1],
   measure.vars=measure(limit, value.name, pattern="(min|max)_(.*)")
@@ -158,8 +156,11 @@ data_vec <- c(
   rnorm(5, 300,10),
   rnorm(3,60,10),
   NULL)
-(result <- pfpop_map_verbose(data_vec))
-gres <- geodesichange::geodesicFPOP_vec(data_vec, Inf, verbose=1)
+
+data_vec <- c(280, 270)
+penalty <- 30
+(result <- pfpop_map_verbose(data_vec, penalty))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
 plot_check(gres, result)
 
 test_that("clusters split", {

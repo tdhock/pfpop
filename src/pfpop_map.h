@@ -78,6 +78,7 @@ public:
   void pieces();
   double get_cost_at_coefs(const Coefs);
   void push_cluster(const Cluster);
+  void push_constant(const Cluster);
   void end_move(Cluster&, double);
   double get_param_or_mid(const Cluster);
   void min_with_constant(double);
@@ -85,7 +86,7 @@ public:
   void move_pointers();
   void move_left(L1LossMap::iterator&,Cluster*);
   void move_right(L1LossMap::iterator&,Cluster*);
-  CrossInfo crossing_before(Coefs coefs, double constant);
+  CrossInfo crossing_before(Coefs);
 };
 
 
