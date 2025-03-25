@@ -65,13 +65,13 @@ plot_check <- function(gres, result){
       before="grey50",
       after="violet"))+
     geom_point(aes(
-      param, cost_mean, color=limit),
+      param, cost, color=limit),
       size=4,
       shape=21,
       fill=NA,
       data=map_dt)+
     geom_abline(aes(
-      slope=Lmean, intercept=Cmean, color=limit),
+      slope=Linear, intercept=Constant, color=limit),
       data=map_dt)
 }
 
@@ -160,7 +160,7 @@ data_vec <- c(
 
 data_vec <- c(280, 270)
 data_vec <- c(40,50,60,70)
-penalty <- 100
+penalty <- 200
 (result <- pfpop_map_verbose(data_vec, penalty))
 gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
 plot_check(gres, result)
