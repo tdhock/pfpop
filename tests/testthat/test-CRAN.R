@@ -5,6 +5,8 @@ pfpop::pfpop_list(1,Inf)
 pfpop_map_verbose <- function(degrees_vec, penalty=Inf, weight_vec = rep(1, length(degrees_vec)), verbose_file=tempfile()){
   result <- pfpop::pfpop_map(degrees_vec, penalty, weight_vec, verbose_file)
   result$clusters <- fread(verbose_file)
+  breaks_file <- paste0(verbose_file,"_breaks")
+  result$breaks <- fread(breaks_file)
   result
 }
 pfpop_map_verbose(1)
@@ -41,10 +43,7 @@ plot_check <- function(gres, result){
     cldt("before", first_param, opt_param),
     cldt("after", opt_param, last_param)),
     by=.(data_i,step_i)]
-  lab.dt <- melt(
-    result$clusters,
-    measure.vars=measure(
-      pointer, value.name, pattern="(first|opt|last)_(param|diff)"))
+  lab.dt <- result$breaks
   geodesichange::plot_model(gres$model)+
     theme_bw()+
     facet_grid(data_i ~ step_i, scales="free")+
@@ -56,9 +55,9 @@ plot_check <- function(gres, result){
       alpha=0.5,
       color="black")+
     geom_label(aes(
-      param, ifelse(diff<0, -Inf, Inf),
-      vjust=ifelse(diff<0, 0, 1),
-      label=diff),
+      param, ifelse(Linear_diff<0, -Inf, Inf),
+      vjust=ifelse(Linear_diff<0, 0, 1),
+      label=Linear_diff),
       data=lab.dt,
       alpha=0.5)+
     scale_fill_manual(values=c(
@@ -74,6 +73,49 @@ plot_check <- function(gres, result){
       slope=Linear, intercept=Constant, color=limit),
       data=map_dt)
 }
+data_vec <- c(40,50,60,70)
+data_vec <- c(280, 270)
+data_vec <- c(40,50,60)
+penalty <- 30
+(result <- pfpop_map_verbose(data_vec, penalty))
+gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
+plot_check(gres, result)
+
+test_that("case 1 and 2: cluster completely above/below constant", {
+  data_vec <- c(30, 40)
+  penalty <- 100
+  (result <- pfpop_map_verbose(data_vec, penalty))
+  if(interactive()){
+    gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
+    plot_check(gres, result)
+  }
+  expect_equal(result$iterations$min_cost, c(0, 10))
+  expect_equal(result$iterations$max_cost, c(180,280))
+})
+
+test_that("case 3: convex cluster crosses constant after min ", {
+  data_vec <- c(30, 100, 60)
+  penalty <- 100
+  result <- pfpop_map_verbose(data_vec, penalty)
+  if(interactive()){
+    gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
+    plot_check(gres, result)
+  }
+  expect_equal(result$iterations$min_cost, c(0, 10))
+  expect_equal(result$iterations$max_cost, c(180,280))
+})
+
+if(FALSE)test_that("case 1 and 2: crash", {
+  data_vec <- c(30, 40)
+  penalty <- 10
+  (result <- pfpop_map_verbose(data_vec, penalty))
+  if(interactive()){
+    gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
+    plot_check(gres, result)
+  }
+  expect_equal(result$iterations$min_cost, c(0, 30, 40))
+})
+
 
 ## test_that("argmin in 3rd step is 350", {
 ##   degrees.vec <- c(10, 310, 350)
@@ -157,13 +199,6 @@ data_vec <- c(
   rnorm(5, 300,10),
   rnorm(3,60,10),
   NULL)
-
-data_vec <- c(280, 270)
-data_vec <- c(40,50,60,70)
-penalty <- 200
-(result <- pfpop_map_verbose(data_vec, penalty))
-gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
-plot_check(gres, result)
 
 test_that("clusters split", {
   data_vec <- c(10, 200, 40, 50)

@@ -11,11 +11,17 @@
 #define PREV_NOT_SET (-1)
 #define MAX_ANGLE 360
 
-class VerboseWriter {
+class ClusterWriter {
 public:
-  std::ofstream verbose_fstream;
+  std::ofstream verbose_fstream, breaks_fstream;
   L1LossMapFun *cost_model_ptr;
   void write(int data_i, int step_i){
+    for
+      (L1LossMap::iterator it=cost_model_ptr->loss_map.begin();
+       it != cost_model_ptr->loss_map.end();
+       it++){
+      breaks_fstream << data_i << "\t" << step_i << "\t" << it->first << "\t" << it->second << "\n";
+    }
     for
       (ClusterList::iterator cluster_it=cost_model_ptr->ptr_list.begin();
        cluster_it != cost_model_ptr->ptr_list.end();
@@ -54,10 +60,14 @@ int pfpop_map
  int *map_size_ptr,
  int *list_size_ptr,
  int *num_moves_ptr){
-  VerboseWriter vwriter;
+  ClusterWriter vwriter;
   bool verbose = strcmp(verbose_file, "") != 0;
+  std::string breaks_file = verbose_file;
+  breaks_file += "_breaks";
   L1LossMapFun cost_model;
   if(verbose){
+    vwriter.breaks_fstream.open(breaks_file);
+    vwriter.breaks_fstream << "data_i" << "\t" << "step_i" << "\t" << "param" << "\t" << "Linear_diff" << "\n";
     vwriter.verbose_fstream.open(verbose_file);
     vwriter.verbose_fstream << "data_i" << "\t" << "step_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_diff" << "\t" << "opt_diff" << "\t" << "last_diff" << "\t" << "Linear" << "\t" << "Constant" << "\t" << "sign" << "\n";
     vwriter.cost_model_ptr = &cost_model;
@@ -152,7 +162,7 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
     double first_cost = get_cost_at_coefs(it->first);
     double opt_cost = get_cost_at_coefs(it->opt);
     double last_cost = get_cost_at_coefs(it->last);
-    printf("add first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
+    //printf("add first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
     move_right_if_zero(it->first);
     move_right_if_zero(it->opt);// points to piece on and after the breakpoint.
     move_left_if_zero(it->last);
@@ -180,7 +190,7 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
     first_cost = get_cost_at_coefs(it->first);
     opt_cost = get_cost_at_coefs(it->opt);
     last_cost = get_cost_at_coefs(it->last);
-    printf("mid first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
+    //printf("mid first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
     move_left(it->first);
     if(sgn(get_Linear_diff(it->first))!=it->sign){
       move_right(it->first);
@@ -196,7 +206,7 @@ void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
     first_cost = get_cost_at_coefs(it->first);
     opt_cost = get_cost_at_coefs(it->opt);
     last_cost = get_cost_at_coefs(it->last);
-    printf("before move_to_opt first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
+    //printf("before move_to_opt first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
     move_to_opt(it);
   }
 }
@@ -465,51 +475,46 @@ void L1LossMapFun::min_with_constant(double constant){
     double first_cost = get_cost_at_coefs(it->first);
     double opt_cost = get_cost_at_coefs(it->opt);
     double last_cost = get_cost_at_coefs(it->last);
-    printf("first=%f opt=%f last=%f\n", first_cost, opt_cost, last_cost);
+    printf("first=%f opt=%f last=%f constant=%f\n", first_cost, opt_cost, last_cost, constant);
     //first handle this cluster.
     if(first_cost < constant && opt_cost < constant && last_cost < constant){
-      //this cluster is completely below constant, so keep.
-      printf("completely below push_cluster\n");
+      printf("case 1 cluster completely below constant push_cluster\n");
       push_cluster(*it);
     }
     if(constant < first_cost && constant < opt_cost && constant < last_cost){
-      //this cluster is completely above constant, so delete this cluster.
-      printf("completely above push_constant\n");
+      printf("case 2 cluster completely above constant push_constant\n");
       push_constant(*it);
     }
     if(first_cost < constant && opt_cost < constant && constant < last_cost){
-      //first and opt are below, last is above, so this is a convex
-      //cluster with a crossing point between opt and last.
+      printf("case 3: convex cluster with a crossing point between opt and last\n");
       Cluster new_cl = *it;
       CrossInfo cinfo = crossing_before(new_cl.last);
       // First push convex piece.
       new_cl.last = cinfo.before;
       push_cluster(new_cl);
-      // TODO push new breakpoint.
       // Then push constant/concave piece.
-      Coefs coefs;//TODO.
+      Coefs coefs;
       coefs.Constant = constant;
       coefs.Linear = 0;
       new_cl.first = new_cl.opt = new_cl.last = coefs;
       push_cluster(new_cl);
     }
     if(first_cost < constant && constant < opt_cost && constant < last_cost){
-      //first is below, and opt/last are above, so this is a concave
-      //cluster with a crossing point between first and opt.
+      printf("case 4: concave cluster with a crossing point between first and opt\n");
+      Cluster new_cl = *it;
+      CrossInfo cinfo = crossing_before(new_cl.last);
     }
     if(constant < first_cost && constant < opt_cost && last_cost < constant){
-      //first/opt are above, and last is below, so this is a concave
-      //cluster with a crossing point between opt and last.
+      printf("case 5: concave cluster with a crossing point between opt and last\n");
     }
     if(constant < first_cost && opt_cost < constant && last_cost < constant){
-      //first is above, and opt/last are below, so this is a convex
-      //cluster with a crossing point between first and opt.
+      printf("case 6: cluster with a crossing point between first and opt\n");
     }
     if(first_cost < constant && constant < opt_cost && last_cost < constant){
-      // concave cluster with two crossing points.
+      printf("case 7: concave cluster with two crossing points\n");
     }
     if(constant < first_cost && opt_cost < constant && constant < last_cost){
-      // convex cluster with two crossing points.
+      printf("case 8: convex cluster with two crossing points\n");
     }
     // then handle crossing point between this cluster and next.
     ClusterList::iterator next_it=it;
@@ -534,10 +539,10 @@ void L1LossMapFun::min_with_constant(double constant){
 	new_cl.last.it = insert_it;
       }
       if(last_cost<constant){
-	printf("push_cluster before\n");
+	//printf("push_cluster before\n");
 	push_cluster(new_cl);
       }else{
-	printf("push_constant before\n");
+	//printf("push_constant before\n");
 	push_constant(new_cl);
       }
       new_cl = *next_it;
@@ -546,10 +551,10 @@ void L1LossMapFun::min_with_constant(double constant){
 	new_cl.first.it = insert_it;
       }
       if(last_cost<constant){
-	printf("push_constant after\n");
+	//printf("push_constant after\n");
 	push_constant(new_cl);
       }else{
-	printf("push_cluster after\n");
+	//printf("push_cluster after\n");
 	push_cluster(new_cl);
       }
       if(next_is_first){
@@ -562,9 +567,9 @@ void L1LossMapFun::min_with_constant(double constant){
     (ClusterList::iterator it=new_list.begin();
      it != new_list.end();
      it++){
-    printf("data_i=%d it->data_i=%d\n", data_i, it->data_i);
+    //printf("data_i=%d it->data_i=%d\n", data_i, it->data_i);
     if(it->data_i==data_i){
-      printf("deleting\n");
+      //printf("deleting\n");
       Coefs before, after;
       it->opt = it->first;
       after = it->first;
@@ -576,7 +581,7 @@ void L1LossMapFun::min_with_constant(double constant){
       }
     }
   }
-  ptr_list = new_list;//TODO.
+  ptr_list = new_list;
 }
 
 CrossInfo L1LossMapFun::crossing_before(Coefs coefs){
