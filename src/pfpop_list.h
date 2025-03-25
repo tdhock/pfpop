@@ -1,26 +1,17 @@
-#define ERROR_PENALTY_NOT_FINITE 1
-#define ERROR_PENALTY_NEGATIVE 2
-#define ERROR_DATA_NOT_FINITE 20
-#define ERROR_DATA_NEGATIVE 21
-#define ERROR_DATA_NOT_LESS_THAN_360 22
-#define ERROR_WEIGHT_NOT_FINITE 30
-#define ERROR_WEIGHT_NOT_POSITIVE 31
+#define pfpop_list_ERROR_PENALTY_NOT_FINITE 1
+#define pfpop_list_ERROR_PENALTY_NEGATIVE 2
+#define pfpop_list_ERROR_DATA_NOT_FINITE 20
+#define pfpop_list_ERROR_DATA_NEGATIVE 21
+#define pfpop_list_ERROR_DATA_NOT_LESS_THAN_360 22
+#define pfpop_list_ERROR_WEIGHT_NOT_FINITE 30
+#define pfpop_list_ERROR_WEIGHT_NOT_POSITIVE 31
+#define pfpop_list_ERROR_NOT_IMPLEMENTED 99
 
-#include <map>
 #include <list>
 
-int pfpop
+int pfpop_list
 (const double*, const double, const double*, const int, 
- int*, double*, double*, int*, int*);
-int decode
-(const int *best_change_ptr,
- const double *best_cost_ptr,
- const double *best_param_ptr,
- const int N_data,
- int *seg_start_ptr,
- int *seg_end_ptr,
- double *seg_param_ptr,
- const int N_segs);
+ int*, double*, double*, int*);
 
 class LinearCoefsForList {
  public:
@@ -38,16 +29,7 @@ class LinearCoefsForList {
   void print();
 };
 
-class LinearCoefsForMap {
- public:
-  double Linear;
-  double Constant;
-  int data_i;
-  LinearCoefsForMap();
-};
-
 typedef std::list<LinearCoefsForList> L1LossList;
-typedef std::map<double, LinearCoefsForMap> L1LossMap;
 
 class L1LossListFun;
 
@@ -61,7 +43,8 @@ typedef void (L1LossListFun::*push_fun_ptr)
 class L1LossListFun {
  public:
   L1LossList piece_list;
-  double weight;
+  double angle, weight;
+  int step;
   L1LossListFun();
   void push_sum_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);
   void push_min_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);

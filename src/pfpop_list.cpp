@@ -3,17 +3,13 @@
 #include <exception>//for std::exception
 #include <stdexcept>//for std::invalid_argument
 #include <R.h> // Rprintf
-
-#include "pfpop.h"
-
 #include <math.h>
 #include <stdio.h>
-#include <R.h>
+
+#include "pfpop_list.h"
 
 #define PREV_NOT_SET (-1)
 #define MAX_ANGLE 360
-
-#define ABS(x) ((x)<0 ? -(x) : (x))
 
 LinearCoefsForList::LinearCoefsForList
 (double li, double co, double m, double M, int i, double prev){
@@ -218,9 +214,9 @@ void L1LossListFun::print(){
 
 void LinearCoefsForList::print(){
   Rprintf("%.20e %.20e %15f %15f %15f %d\n",
-	 Linear, Constant,
-	 min_angle_param, max_angle_param,
-	 prev_angle_param, data_i);
+	  Linear, Constant,
+	  min_angle_param, max_angle_param,
+	  prev_angle_param, data_i);
 }
 
 void L1LossListFun::emplace_piece
@@ -318,7 +314,7 @@ void L1LossListFun::Minimize
   }
 }
 
-int pfpop
+int pfpop_list
 (const double *degrees_ptr,
  const double penalty,
  const double *weight_ptr,
@@ -326,36 +322,34 @@ int pfpop
  int *best_change_ptr,
  double *best_cost_ptr,
  double *best_param_ptr,
- int *best_N_segs_ptr,
  int *num_pieces_ptr){
   if(penalty == INFINITY){
     //ok.
   }else if(!std::isfinite(penalty)){
-    return ERROR_PENALTY_NOT_FINITE;
+    return pfpop_list_ERROR_PENALTY_NOT_FINITE;
   }else if(penalty < 0){
-    return ERROR_PENALTY_NEGATIVE;
+    return pfpop_list_ERROR_PENALTY_NEGATIVE;
   }
   L1LossListFun dist_fun_i, cost_up_to_i, cost_up_to_prev, cost_of_change, min_term;
   int verbose=0;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
-  double total_intervals = 0.0, max_intervals = 0.0;
   for(int data_i=0; data_i<N_data; data_i++){
     double angle = degrees_ptr[data_i];
     if(!std::isfinite(angle)){
-      return ERROR_DATA_NOT_FINITE;
+      return pfpop_list_ERROR_DATA_NOT_FINITE;
     }
     if(angle<0){
-      return ERROR_DATA_NEGATIVE;
+      return pfpop_list_ERROR_DATA_NEGATIVE;
     }
     if(angle >= MAX_ANGLE){
-      return ERROR_DATA_NOT_LESS_THAN_360;
+      return pfpop_list_ERROR_DATA_NOT_LESS_THAN_360;
     }
     double weight = weight_ptr[data_i];
     if(!std::isfinite(weight)){
-      return ERROR_WEIGHT_NOT_FINITE;
+      return pfpop_list_ERROR_WEIGHT_NOT_FINITE;
     }
     if(weight <= 0){
-      return ERROR_WEIGHT_NOT_POSITIVE;
+      return pfpop_list_ERROR_WEIGHT_NOT_POSITIVE;
     }
     cum_weight_i += weight;
     dist_fun_i.init(angle, weight);
@@ -392,35 +386,5 @@ int pfpop
        best_param_ptr+data_i,
        best_change_ptr+data_i);
   }//while(can read line in text file)
-  // Decoding the cost_model_vec, and writing to the output matrices.
-  *best_N_segs_ptr = decode
-    (best_change_ptr, best_cost_ptr, best_param_ptr, N_data,
-     0, 0, 0, 0);
   return 0;
 }
-
-int decode
-(const int *best_change_ptr,
- const double *best_cost_ptr,
- const double *best_param_ptr,
- const int N_data,
- int *seg_start_ptr,
- int *seg_end_ptr,
- double *seg_param_ptr,
- const int N_segs){
-  int last_i = N_data-1;
-  int seg_i = N_segs-1;
-  int seg_count = 0;
-  while(0 <= last_i){
-    int next_last = best_change_ptr[last_i];
-    if(N_segs != 0){
-      seg_start_ptr[seg_i] = next_last+1;
-      seg_end_ptr[seg_i] = last_i;
-      seg_param_ptr[seg_i] = best_param_ptr[last_i];
-    }
-    seg_i--;
-    last_i = next_last;
-    seg_count++;
-  }
-  return seg_count;
-}  
