@@ -10,7 +10,7 @@ pfpop_map_verbose <- function(degrees_vec, penalty=Inf, weight_vec = rep(1, leng
 pfpop_map_verbose(1)
 ##pfpop_map_verbose(1:2)
 mean_cost <- function(result)melt(
-  data.table(result$iterations)[, data_i := .I-1],
+  data.table(result$iterations, step_i=1)[, data_i := .I-1],
   measure.vars=measure(limit, value.name, pattern="(min|max)_(.*)")
 )[
 , N := data_i+1
@@ -19,9 +19,10 @@ mean_cost <- function(result)melt(
   Cmean=Constant/N,
   cost_mean=cost/N
 )][]
-cldt <- function(data_i, opt, start, end){
+cldt <- function(opt, start, end){
+  ## Converts table output from C++ to table which we can input to
+  ## display correctly across the 0,360 boundary, using geom_rect.
   sedt <- data.table(
-    data_i,
     start=as.numeric(start),
     end=as.numeric(end)
   )[
@@ -37,16 +38,16 @@ cldt <- function(data_i, opt, start, end){
 plot_check <- function(gres, result){
   map_dt <- mean_cost(result)
   cluster.dt <- result$clusters[, rbind(
-    cldt(data_i, "before", first_param, opt_param),
-    cldt(data_i, "after", opt_param, last_param))]
+    cldt("before", first_param, opt_param),
+    cldt("after", opt_param, last_param)),
+    by=.(data_i,step_i)]
   lab.dt <- melt(
     result$clusters,
     measure.vars=measure(
       pointer, value.name, pattern="(first|opt|last)_(param|diff)"))
   geodesichange::plot_model(gres$model)+
     theme_bw()+
-    theme(panel.margin=grid::unit(0,"lines"))+
-    facet_grid(data_i ~ ., scales="free")+
+    facet_grid(data_i ~ step_i, scales="free")+
     geom_rect(aes(
       xmin=start, xmax=end,
       fill=opt,
@@ -158,7 +159,8 @@ data_vec <- c(
   NULL)
 
 data_vec <- c(280, 270)
-penalty <- 30
+data_vec <- c(40,50,60,70)
+penalty <- 100
 (result <- pfpop_map_verbose(data_vec, penalty))
 gres <- geodesichange::geodesicFPOP_vec(data_vec, penalty, verbose=1)
 plot_check(gres, result)

@@ -11,6 +11,30 @@
 #define PREV_NOT_SET (-1)
 #define MAX_ANGLE 360
 
+class VerboseWriter {
+public:
+  std::ofstream verbose_fstream;
+  L1LossMapFun *cost_model_ptr;
+  void write(int data_i, int step_i){
+    for
+      (ClusterList::iterator cluster_it=cost_model_ptr->ptr_list.begin();
+       cluster_it != cost_model_ptr->ptr_list.end();
+       cluster_it++){
+      verbose_fstream << data_i << "\t" <<
+	step_i << "\t" << 
+	cost_model_ptr->get_param(cluster_it->first) << "\t" <<
+	cost_model_ptr->get_param(cluster_it->opt) << "\t" <<
+	cost_model_ptr->get_param(cluster_it->last) << "\t" <<
+	cost_model_ptr->get_Linear_diff(cluster_it->first) << "\t" <<
+	cost_model_ptr->get_Linear_diff(cluster_it->opt) << "\t" <<
+	cost_model_ptr->get_Linear_diff(cluster_it->last) << "\t" <<
+	cluster_it->opt.Linear << "\t" <<
+	cluster_it->opt.Constant << "\t" <<
+	cluster_it->sign << "\n";
+    }
+  }
+};
+
 int pfpop_map
 (const double *degrees_ptr,
  const double penalty,
@@ -30,13 +54,14 @@ int pfpop_map
  int *map_size_ptr,
  int *list_size_ptr,
  int *num_moves_ptr){
-  std::ofstream verbose_fstream; // ofstream supports output only.
+  VerboseWriter vwriter;
   bool verbose = strcmp(verbose_file, "") != 0;
-  if(verbose){
-    verbose_fstream.open(verbose_file);
-    verbose_fstream << "data_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_diff" << "\t" << "opt_diff" << "\t" << "last_diff" << "\t" << "Linear" << "\t" << "Constant" << "\t" << "sign" << "\n";
-  }
   L1LossMapFun cost_model;
+  if(verbose){
+    vwriter.verbose_fstream.open(verbose_file);
+    vwriter.verbose_fstream << "data_i" << "\t" << "step_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_diff" << "\t" << "opt_diff" << "\t" << "last_diff" << "\t" << "Linear" << "\t" << "Constant" << "\t" << "sign" << "\n";
+    vwriter.cost_model_ptr = &cost_model;
+  }
   cost_model.cost = 0;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
   for(int data_i=0; data_i<N_data; data_i++){
@@ -63,6 +88,7 @@ int pfpop_map
     if(data_i != 0){
       cost_model.min_with_constant(min_cost_ptr[data_i-1]+penalty);
     }
+    if(verbose)vwriter.write(data_i, 0);
     // TODO to compute the mean cost instead of the total cost, we
     // divide the penalty by the previous cumsum, and add that to the
     // min-ified constant, before applying the min with constant.
@@ -76,23 +102,7 @@ int pfpop_map
     map_size_ptr[data_i] = cost_model.loss_map.size();
     list_size_ptr[data_i] = cost_model.ptr_list.size();
     num_moves_ptr[data_i] = cost_model.moves;
-    if(verbose){
-      for
-	(ClusterList::iterator cluster_it=cost_model.ptr_list.begin();
-	 cluster_it != cost_model.ptr_list.end();
-	 cluster_it++){
-	verbose_fstream << data_i << "\t" <<
-	  cost_model.get_param(cluster_it->first) << "\t" <<
-	  cost_model.get_param(cluster_it->opt) << "\t" <<
-	  cost_model.get_param(cluster_it->last) << "\t" <<
-	  cost_model.get_Linear_diff(cluster_it->first) << "\t" <<
-	  cost_model.get_Linear_diff(cluster_it->opt) << "\t" <<
-	  cost_model.get_Linear_diff(cluster_it->last) << "\t" <<
-	  cluster_it->opt.Linear << "\t" <<
-	  cluster_it->opt.Constant << "\t" <<
-	  cluster_it->sign << "\n";
-      }
-    }
+    if(verbose)vwriter.write(data_i, 1);
   }
   return 0;
 }
@@ -504,8 +514,10 @@ void L1LossMapFun::min_with_constant(double constant){
     // then handle crossing point between this cluster and next.
     ClusterList::iterator next_it=it;
     next_it++;
+    bool next_is_first=false;
     if(next_it==ptr_list.end()){
       next_it=ptr_list.begin();
+      next_is_first=true;
     }
     double next_first_cost = get_cost_at_coefs(next_it->first);
     if(cost_between(last_cost, constant, next_first_cost)){
@@ -540,9 +552,11 @@ void L1LossMapFun::min_with_constant(double constant){
 	printf("push_cluster after\n");
 	push_cluster(new_cl);
       }
+      if(next_is_first){
+	new_list.erase(new_list.begin());
+      }
     }
   }
-  // TODO handle first/last cluster merge.
   // loop over new clusters, erase breakpoints in new constant clusters.
   for
     (ClusterList::iterator it=new_list.begin();
