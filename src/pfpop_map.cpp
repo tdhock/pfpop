@@ -528,10 +528,10 @@ void L1LossMapFun::min_with_constant(double constant){
     if(cost_between(last_cost, constant, next_first_cost)){
       CrossInfo cinfo = crossing_before(next_it->first);
       // TODO handle equality / existing break.
-      double new_diff_sign = (last_cost<constant) ? -1 : 1;
-      double new_diff = new_diff_sign * it->last.Linear;
+      double new_diff = (last_cost<constant) ? -it->last.Linear : next_it->first.Linear;
       std::pair<L1LossMap::iterator, bool> result;
       result = loss_map.insert(std::pair<double,double>(cinfo.param, new_diff));
+      printf("param=%f new_diff=%f result.second=%d\n", cinfo.param, new_diff, result.second);
       L1LossMap::iterator insert_it = result.first;
       Cluster new_cl = *it;
       //cluster before new break.
@@ -539,10 +539,10 @@ void L1LossMapFun::min_with_constant(double constant){
 	new_cl.last.it = insert_it;
       }
       if(last_cost<constant){
-	//printf("push_cluster before\n");
+	printf("push_cluster before\n");
 	push_cluster(new_cl);
       }else{
-	//printf("push_constant before\n");
+	printf("push_constant before\n");
 	push_constant(new_cl);
       }
       new_cl = *next_it;
@@ -551,10 +551,10 @@ void L1LossMapFun::min_with_constant(double constant){
 	new_cl.first.it = insert_it;
       }
       if(last_cost<constant){
-	//printf("push_constant after\n");
+	printf("push_constant after\n");
 	push_constant(new_cl);
       }else{
-	//printf("push_cluster after\n");
+	printf("push_cluster after\n");
 	push_cluster(new_cl);
       }
       if(next_is_first){
@@ -607,15 +607,18 @@ CrossInfo L1LossMapFun::crossing_before(Coefs coefs){
 void L1LossMapFun::push_cluster(const Cluster cl){
   if(new_list.empty()){
     new_list.push_back(cl);
+    printf("push first cluster %f %f %f\n", cl.first.it->first, cl.opt.it->first, cl.last.it->first);
     return;
   }
   ClusterList::iterator last_it = new_list.end();
   last_it--;
   if(last_it->sign == cl.sign){
+    printf("grow cluster %f -> %f\n", last_it->last.it->first, cl.last.it->first);
     last_it->last = cl.last;
     return;
   }
   new_list.push_back(cl);
+  printf("push new cluster %f %f %f\n", cl.first.it->first, cl.opt.it->first, cl.last.it->first);
 }
 
 L1LossMapFun::L1LossMapFun(){
