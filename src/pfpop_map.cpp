@@ -31,11 +31,12 @@ public:
 	cost_model_ptr->get_param(cluster_it->first) << "\t" <<
 	cost_model_ptr->get_param(cluster_it->opt) << "\t" <<
 	cost_model_ptr->get_param(cluster_it->last) << "\t" <<
-	cost_model_ptr->get_Linear_diff(cluster_it->first) << "\t" <<
-	cost_model_ptr->get_Linear_diff(cluster_it->opt) << "\t" <<
-	cost_model_ptr->get_Linear_diff(cluster_it->last) << "\t" <<
+	cluster_it->first.Linear << "\t" <<
 	cluster_it->opt.Linear << "\t" <<
+	cluster_it->last.Linear << "\t" <<
+	cluster_it->first.Constant << "\t" <<
 	cluster_it->opt.Constant << "\t" <<
+	cluster_it->last.Constant << "\t" <<
 	cluster_it->sign << "\n";
     }
   }
@@ -69,7 +70,7 @@ int pfpop_map
     vwriter.breaks_fstream.open(breaks_file);
     vwriter.breaks_fstream << "data_i" << "\t" << "step_i" << "\t" << "param" << "\t" << "Linear_diff" << "\n";
     vwriter.verbose_fstream.open(verbose_file);
-    vwriter.verbose_fstream << "data_i" << "\t" << "step_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_diff" << "\t" << "opt_diff" << "\t" << "last_diff" << "\t" << "Linear" << "\t" << "Constant" << "\t" << "sign" << "\n";
+    vwriter.verbose_fstream << "data_i" << "\t" << "step_i" << "\t" << "first_param" << "\t" << "opt_param" << "\t" << "last_param" << "\t" << "first_Linear" << "\t" << "opt_Linear" << "\t" << "last_Linear" << "\t" << "first_Constant" << "\t" << "opt_Constant" << "\t" << "last_Constant" << "\t" << "sign" << "\n";
     vwriter.cost_model_ptr = &cost_model;
   }
   cost_model.cost = 0;
@@ -95,6 +96,7 @@ int pfpop_map
     cum_weight_i += weight;
     cost_model.moves = 0;
     cost_model.data_i = data_i;
+    printf("------>data_i=%d\n", data_i);
     if(data_i != 0){
       cost_model.min_with_constant(min_cost_ptr[data_i-1]+penalty);
     }
@@ -371,6 +373,7 @@ void L1LossMapFun::piece
 
 void L1LossMapFun::update_coefs(Coefs &coefs){
   if(min_param <= get_param(coefs) && get_param(coefs) < max_param){
+    printf("updating param=%f Linear=%f+%f Constant=%f+%f\n", get_param(coefs), coefs.Linear, Linear, coefs.Constant, Constant);
     coefs.Linear += Linear;
     coefs.Constant += Constant;
   }
@@ -528,7 +531,9 @@ void L1LossMapFun::min_with_constant(double constant){
     if(cost_between(last_cost, constant, next_first_cost)){
       CrossInfo cinfo = crossing_before(next_it->first);
       // TODO handle equality / existing break.
-      double new_diff = (last_cost<constant) ? -it->last.Linear : next_it->first.Linear;
+      int new_diff_sign = (last_cost<constant) ? -1 : 1;
+      printf("it first=%f opt=%f last=%f next first=%f opt=%f last=%f\n", it->first.Linear, it->opt.Linear, it->last.Linear, next_it->first.Linear, next_it->opt.Linear, it->last.Linear);
+      double new_diff = new_diff_sign * it->first.Linear;
       std::pair<L1LossMap::iterator, bool> result;
       result = loss_map.insert(std::pair<double,double>(cinfo.param, new_diff));
       printf("param=%f new_diff=%f result.second=%d\n", cinfo.param, new_diff, result.second);
@@ -616,6 +621,9 @@ void L1LossMapFun::push_cluster(const Cluster cl){
     printf("grow cluster %f -> %f\n", last_it->last.it->first, cl.last.it->first);
     last_it->last = cl.last;
     return;
+  }
+  if(last_it->last.Linear==0){
+    last_it->last.Linear = cl.first.Linear;
   }
   new_list.push_back(cl);
   printf("push new cluster %f %f %f\n", cl.first.it->first, cl.opt.it->first, cl.last.it->first);

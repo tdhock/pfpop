@@ -11,16 +11,6 @@ pfpop_map_verbose <- function(degrees_vec, penalty=Inf, weight_vec = rep(1, leng
 }
 pfpop_map_verbose(1)
 ##pfpop_map_verbose(1:2)
-mean_cost <- function(result)melt(
-  data.table(result$iterations, step_i=1)[, data_i := .I-1],
-  measure.vars=measure(limit, value.name, pattern="(min|max)_(.*)")
-)[
-, N := data_i+1
-][, let(
-  Lmean=Linear/N,
-  Cmean=Constant/N,
-  cost_mean=cost/N
-)][]
 cldt <- function(opt, start, end){
   ## Converts table output from C++ to table which we can input to
   ## display correctly across the 0,360 boundary, using geom_rect.
@@ -38,7 +28,11 @@ cldt <- function(opt, start, end){
     sedt[noInf==FALSE][, let(end=Inf)]))
 }
 plot_check <- function(gres, result){
-  map_dt <- mean_cost(result)
+  res.long <- melt(
+    result$clusters,
+    measure.vars=measure(
+      ptr, value.name,
+      pattern="(first|opt|last)_(param|Constant|Linear)"))
   cluster.dt <- result$clusters[, rbind(
     cldt("before", first_param, opt_param),
     cldt("after", opt_param, last_param)),
@@ -64,14 +58,14 @@ plot_check <- function(gres, result){
       before="grey50",
       after="violet"))+
     geom_point(aes(
-      param, cost, color=limit),
+      param, param*Linear+Constant),
       size=4,
       shape=21,
       fill=NA,
-      data=map_dt)+
+      data=res.long)+
     geom_abline(aes(
-      slope=Linear, intercept=Constant, color=limit),
-      data=map_dt)
+      slope=Linear, intercept=Constant),
+      data=res.long)
 }
 data_vec <- c(40,50,60,70)
 data_vec <- c(280, 270)
