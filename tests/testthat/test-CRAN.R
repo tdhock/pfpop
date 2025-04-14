@@ -84,8 +84,13 @@ test_that("case 1 and 2: breaks ok", {
   ## first push constant from 70 to 10, then grow constant end from 10
   ## to 25. Sign is not correct at 25, why? we grow cluster which
   ## replaces last
+  cl1.0 <- result$clusters[data_i==1 & step_i==0]
+  expect_equal(cl1.0[, last_param*last_Linear+last_Constant], c(penalty, 0))
+  computed.dt <- result$breaks[data_i==1 & step_i==0][order(param)]
+  expected.dt <- data.table(data_i=1L, step_i=0L, param=c(10,40,70), Linear_diff=c(-1,2,-1))
+  expect_equal(computed.dt, expected.dt)
   computed.dt <- result$breaks[data_i==2 & step_i==0][order(param)]
-  expected.dt <- data.table(data_i=1L, step_i=0L, param=c(25,40,50,65), Linear_diff=c(-2,2,2,-2))
+  expected.dt <- data.table(data_i=2L, step_i=0L, param=c(25,40,50,65), Linear_diff=c(-2,2,2,-2))
   expect_equal(computed.dt, expected.dt)
 })
 
