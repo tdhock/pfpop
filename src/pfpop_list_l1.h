@@ -9,8 +9,8 @@
 
 #include <list>
 
-int pfpop_list
-(const double*, const double, const double*, const int, 
+int pfpop_list_l1
+(const double*, const double, const double*, const int, const char*,
  int*, double*, double*, int*);
 
 class LinearCoefsForList {

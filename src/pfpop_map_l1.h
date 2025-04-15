@@ -10,7 +10,7 @@
 #include <map>
 #include <list>
 
-int pfpop_map
+int pfpop_map_l1
 (const double*, const double, const double*, const int, const char*, 
  double*, double*,
  double*, double*, int*,//max

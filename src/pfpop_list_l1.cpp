@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "pfpop_list.h"
+#include "pfpop_list_l1.h"
 
 #define PREV_NOT_SET (-1)
 #define MAX_ANGLE 360
@@ -314,15 +314,23 @@ void L1LossListFun::Minimize
   }
 }
 
-int pfpop_list
+int pfpop_list_l1
 (const double *degrees_ptr,
  const double penalty,
  const double *weight_ptr,
  const int N_data,
+ const char *verbose_file,
  int *best_change_ptr,
  double *best_cost_ptr,
  double *best_param_ptr,
  int *num_pieces_ptr){
+  bool verbose = strcmp(verbose_file, "") != 0;
+  std::string breaks_file = verbose_file;
+  std::ofstream verbose_fstream;
+  if(verbose){
+    verbose_fstream.open(verbose_file);
+    verbose_fstream << "data_i" << "\t" << "step_i" << "\t" << "min_param" << "\t" << "max_param" << "\t" << "change_i" << "\t" << "Linear" << "\t" << "Constant" << "\n";    
+  }
   if(penalty == INFINITY){
     //ok.
   }else if(!std::isfinite(penalty)){
@@ -331,7 +339,6 @@ int pfpop_list
     return pfpop_list_ERROR_PENALTY_NEGATIVE;
   }
   L1LossListFun dist_fun_i, cost_up_to_i, cost_up_to_prev, cost_of_change, min_term;
-  int verbose=0;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
   for(int data_i=0; data_i<N_data; data_i++){
     double angle = degrees_ptr[data_i];
@@ -359,28 +366,39 @@ int pfpop_list
       if(penalty == INFINITY){
 	min_term = cost_up_to_prev;
       }else{
-	cost_of_change.set_to_min_of_one(&cost_up_to_prev, verbose);
-	// V_t(m) = (gamma_t + w_{1:t-1} * M_t(m))/w_{1:t}, where
-	// M_t(m) = min{
-	//   V_{t-1}(m),
-	//   Vbar_{t-1} + penalty/w_{1:t-1}
-	// in other words, we need to divide the penalty by the previous cumsum,
-	// and add that to the min-less-ified function, before applying the min-env
+	cost_of_change.set_to_min_of_one(&cost_up_to_prev, 0);
 	cost_of_change.set_prev_seg_end(data_i-1);
-	cost_of_change.add(penalty/cum_weight_prev_i);
+	//cost_of_change.add(penalty/cum_weight_prev_i);
+	cost_of_change.add(penalty);
 	if(penalty==0){
 	  min_term = cost_of_change;
 	}else{
-	  min_term.set_to_min_of_two(&cost_of_change, &cost_up_to_prev, verbose);
+	  min_term.set_to_min_of_two(&cost_of_change, &cost_up_to_prev, 0);
 	}
       }
-      min_term.multiply(cum_weight_prev_i);
-      cost_up_to_i.set_to_sum_of(&dist_fun_i, &min_term, verbose);
+      if(verbose){
+	for
+	  (auto it=min_term.piece_list.begin();
+	   it != min_term.piece_list.end();
+	   it++){
+	  verbose_fstream << data_i << "\t" << "0" << "\t" << it->min_angle_param << "\t" << it->max_angle_param << "\t" << it->data_i << "\t" << it->Linear << "\t" << it->Constant << "\n";
+	}
+      }
+      //min_term.multiply(cum_weight_prev_i);
+      cost_up_to_i.set_to_sum_of(&dist_fun_i, &min_term, 0);
     }
-    cost_up_to_i.multiply(1/cum_weight_i);
+    //cost_up_to_i.multiply(1/cum_weight_i);
     cum_weight_prev_i = cum_weight_i;
     num_pieces_ptr[data_i] = cost_up_to_i.piece_list.size();
     cost_up_to_prev = cost_up_to_i;
+    if(verbose){
+      for
+	(auto it=cost_up_to_i.piece_list.begin();
+	 it != cost_up_to_i.piece_list.end();
+	 it++){
+	verbose_fstream << data_i << "\t" << "1" << "\t" << it->min_angle_param << "\t" << it->max_angle_param << "\t" << it->data_i << "\t" << it->Linear << "\t" << it->Constant << "\n";
+      }
+    }
     cost_up_to_i.Minimize
       (best_cost_ptr+data_i,
        best_param_ptr+data_i,

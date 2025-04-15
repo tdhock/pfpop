@@ -1,3 +1,5 @@
 useDynLib(pfpop)
-export(pfpop_map, pfpop_list)
+S3method(plot, pfpop_map_l1_verbose)
+export(pfpop_map_l1, pfpop_list_l1, pfpop_map_l1_verbose)
 importFrom(Rcpp, evalCpp)
+importFrom(data.table, fread, melt, data.table)

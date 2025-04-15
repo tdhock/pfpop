@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "pfpop_map.h"
+#include "pfpop_map_l1.h"
 
 #define PREV_NOT_SET (-1)
 #define MAX_ANGLE 360
@@ -42,7 +42,7 @@ public:
   }
 };
 
-int pfpop_map
+int pfpop_map_l1
 (const double *degrees_ptr,
  const double penalty,
  const double *weight_ptr,

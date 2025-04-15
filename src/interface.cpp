@@ -1,10 +1,10 @@
-#include "pfpop_map.h"
-#include "pfpop_list.h"
+#include "pfpop_map_l1.h"
+#include "pfpop_list_l1.h"
 #include "pfpop_decode.h"
 #include <Rcpp.h>
 
 // [[Rcpp::export]]
-Rcpp::List pfpop_map_interface
+Rcpp::List pfpop_map_l1_interface
 (const Rcpp::NumericVector degrees_vec,
  const double penalty,
  const Rcpp::NumericVector weight_vec,
@@ -29,7 +29,7 @@ Rcpp::List pfpop_map_interface
   Rcpp::IntegerVector map_size_vec(N_data);
   Rcpp::IntegerVector list_size_vec(N_data);
   Rcpp::IntegerVector num_moves_vec(N_data);
-  int status = pfpop_map
+  int status = pfpop_map_l1
     (&degrees_vec[0],
      penalty,
      &weight_vec[0],
@@ -104,10 +104,11 @@ Rcpp::List pfpop_map_interface
 }
 
 // [[Rcpp::export]]
-Rcpp::List pfpop_list_interface
+Rcpp::List pfpop_list_l1_interface
 (const Rcpp::NumericVector degrees_vec,
  const double penalty,
- const Rcpp::NumericVector weight_vec){
+ const Rcpp::NumericVector weight_vec,
+ const std::string verbose_file){
   int N_data = degrees_vec.length();
   if(N_data < 1){
     Rcpp::stop("degrees_vec length must be one or more");
@@ -119,11 +120,13 @@ Rcpp::List pfpop_list_interface
   Rcpp::NumericVector best_cost_vec(N_data);
   Rcpp::NumericVector best_param_vec(N_data);
   Rcpp::IntegerVector num_pieces_vec(N_data);
-  int status = pfpop_list
+  int status = pfpop_list_l1
     (&degrees_vec[0],
      penalty,
      &weight_vec[0],
      N_data,
+     verbose_file.c_str(),
+     //inputs above, outputs below.
      &best_change_vec[0],
      &best_cost_vec[0],
      &best_param_vec[0],
