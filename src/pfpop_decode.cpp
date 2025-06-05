@@ -14,6 +14,7 @@ int pfpop_decode
   int seg_count = 0;
   while(0 <= last_i){
     int next_last = best_change_ptr[last_i];
+    printf("last_i=%d next_last=%d\n", last_i, next_last);
     if(N_segs != 0){
       seg_start_ptr[seg_i] = next_last+1;
       seg_end_ptr[seg_i] = last_i;

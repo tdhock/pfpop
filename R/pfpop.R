@@ -1,5 +1,13 @@
 plot.pfpop_map_l1_verbose <- function(x, ...){
   if(requireNamespace("ggplot2")){
+    size.values <- c(
+      first=4.5,
+      opt=3,
+      last=1.5)
+    color.values <- c(
+      first="red",
+      opt="blue",
+      last="orange")
     ggplot2::ggplot()+
       ggplot2::theme_bw()+
       ggplot2::geom_vline(ggplot2::aes(
@@ -12,9 +20,7 @@ plot.pfpop_map_l1_verbose <- function(x, ...){
         size=2,
         color="grey50",
         data=x$list_result$model)+
-      ggplot2::facet_grid(data_i ~ step_i)+
-      ggplot2::scale_x_continuous(breaks=seq(0,360,by=90))+
-      ggplot2::facet_grid(data_i ~ step_i, scales="free")+
+      ggplot2::facet_grid(data_i ~ step_i, scales="free", labeller=ggplot2::label_both)+
       ggplot2::geom_rect(ggplot2::aes(
         xmin=start, xmax=end,
         fill=opt,
@@ -29,14 +35,25 @@ plot.pfpop_map_l1_verbose <- function(x, ...){
         data=x$breaks,
         alpha=0.5)+
       ggplot2::scale_fill_manual(values=c(
-        before="grey50",
-        after="violet"))+
-      ggplot2::geom_point(ggplot2::aes(
-        param, param*Linear+Constant),
-        size=4,
-        shape=21,
-        fill=NA,
+        before="violet",
+        after="grey50"))+
+      ggplot2::scale_size_manual(
+        breaks=names(size.values),
+        values=size.values)+
+      ggplot2::scale_color_manual(
+        breaks=names(color.values),
+        values=color.values)+
+      ggplot2::geom_abline(ggplot2::aes(
+        slope=Linear, intercept=Constant,
+        color=ptr),
+        alpha=0.3,
+        size=2,
         data=x$clusters.long)+
+      ggplot2::geom_point(ggplot2::aes(
+        param, param*Linear+Constant,
+        color=ptr,
+        size=ptr),
+        data=x$clusters.long[order(-size.values[ptr])])+
       ggplot2::geom_abline(ggplot2::aes(
         slope=Linear, intercept=Constant),
         data=x$clusters.long)
@@ -65,7 +82,10 @@ pfpop_map_l1_verbose <- function(degrees_vec, penalty, weight_vec=rep(1,length(d
 pfpop_map_l1 <- function(degrees_vec, penalty, weight_vec=rep(1,length(degrees_vec)), verbose_file=""){
   fit <- pfpop_map_l1_interface(degrees_vec, penalty, weight_vec, verbose_file)
   if(verbose_file!=""){
-    fit$clusters <- fread(verbose_file)
+    fit$clusters <- fread(verbose_file, colClasses=list(numeric=c(
+      "first_param", "opt_param", "last_param",
+      "first_Linear", "opt_Linear", "last_Linear",
+      "first_Constant", "opt_Constant", "last_Constant")))
     breaks_file <- paste0(verbose_file,"_breaks")
     fit$breaks <- fread(breaks_file)
   }

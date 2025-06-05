@@ -43,7 +43,7 @@ typedef void (L1LossListFun::*push_fun_ptr)
 class L1LossListFun {
  public:
   L1LossList piece_list;
-  double angle, weight;
+  double angle, weight, min_data, max_data;
   int step;
   L1LossListFun();
   void push_sum_pieces(L1LossListFun*, L1LossListFun*, L1LossList::iterator, L1LossList::iterator, int);

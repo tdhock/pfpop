@@ -9,7 +9,6 @@
 #include "pfpop_list_l1.h"
 
 #define PREV_NOT_SET (-1)
-#define MAX_ANGLE 360
 
 LinearCoefsForList::LinearCoefsForList
 (double li, double co, double m, double M, int i, double prev){
@@ -50,7 +49,7 @@ void L1LossListFun::set_to_min_of_one
   int data_i;
   input->Minimize(&best_loss, &best_angle_param, &data_i);
   piece_list.clear();
-  piece_list.emplace_front(0, best_loss, 0, MAX_ANGLE, PREV_NOT_SET, best_angle_param);
+  piece_list.emplace_front(0, best_loss, min_data, max_data, PREV_NOT_SET, best_angle_param);
 }
 
 void L1LossListFun::push_sum_pieces
@@ -222,9 +221,11 @@ void LinearCoefsForList::print(){
 void L1LossListFun::emplace_piece
 (double Linear, double Constant,
  double min_angle_param, double max_angle_param){
-  piece_list.emplace_back
-    (Linear*weight, Constant*weight,
-     min_angle_param, max_angle_param);
+  if(min_angle_param<max_angle_param){
+    piece_list.emplace_back
+      (Linear*weight, Constant*weight,
+       min_angle_param, max_angle_param);
+  }
 }
 
 void L1LossListFun::emplace_piece
@@ -277,21 +278,8 @@ void L1LossListFun::init
 (double angle, double weight_){
   weight = weight_;
   piece_list.clear();
-  if(angle == 0){
-    emplace_piece(1, 0, 0, MAX_ANGLE/2);
-    emplace_piece(-1, MAX_ANGLE, MAX_ANGLE/2, MAX_ANGLE);
-  }else if(angle < MAX_ANGLE/2){
-    emplace_piece(-1, angle, 0, angle);
-    emplace_piece(1, -angle, angle, angle+MAX_ANGLE/2);
-    emplace_piece(-1, (MAX_ANGLE+angle), angle+MAX_ANGLE/2, MAX_ANGLE);
-  }else if(angle == MAX_ANGLE/2){
-    emplace_piece(-1, MAX_ANGLE/2, 0, MAX_ANGLE/2);
-    emplace_piece(1, -MAX_ANGLE/2, MAX_ANGLE/2, MAX_ANGLE);
-  }else{
-    emplace_piece(1, MAX_ANGLE-angle, 0, angle-MAX_ANGLE/2);
-    emplace_piece(-1, angle, angle-MAX_ANGLE/2, angle);
-    emplace_piece(1, -angle, angle, MAX_ANGLE);
-  }
+  emplace_piece(-1, angle, min_data, angle);
+  emplace_piece(1, -angle, angle, max_data);
 }
 
 void L1LossListFun::Minimize
@@ -306,6 +294,7 @@ void L1LossListFun::Minimize
     double it_angle_param =
       (it->Linear < 0) ? it->max_angle_param : it->min_angle_param;
     double it_loss = it->Loss(it_angle_param);
+    printf("param=%f loss=%f\n", it_angle_param, it_loss);
     if(it_loss < *best_loss){
       *best_loss = it_loss;
       *best_angle_param = it_angle_param;
@@ -339,18 +328,23 @@ int pfpop_list_l1
     return pfpop_list_ERROR_PENALTY_NEGATIVE;
   }
   L1LossListFun dist_fun_i, cost_up_to_i, cost_up_to_prev, cost_of_change, min_term;
-  double cum_weight_i = 0, cum_weight_prev_i = 0;
+  dist_fun_i.min_data = INFINITY;
+  dist_fun_i.max_data = -INFINITY;
   for(int data_i=0; data_i<N_data; data_i++){
     double angle = degrees_ptr[data_i];
     if(!std::isfinite(angle)){
       return pfpop_list_ERROR_DATA_NOT_FINITE;
     }
-    if(angle<0){
-      return pfpop_list_ERROR_DATA_NEGATIVE;
+    if(angle < dist_fun_i.min_data){
+      dist_fun_i.min_data = angle;
     }
-    if(angle >= MAX_ANGLE){
-      return pfpop_list_ERROR_DATA_NOT_LESS_THAN_360;
+    if(angle > dist_fun_i.max_data){
+      dist_fun_i.max_data = angle;
     }
+  }
+  double cum_weight_i = 0, cum_weight_prev_i = 0;
+  for(int data_i=0; data_i<N_data; data_i++){
+    double angle = degrees_ptr[data_i];
     double weight = weight_ptr[data_i];
     if(!std::isfinite(weight)){
       return pfpop_list_ERROR_WEIGHT_NOT_FINITE;
@@ -399,10 +393,11 @@ int pfpop_list_l1
 	verbose_fstream << data_i << "\t" << "1" << "\t" << it->min_angle_param << "\t" << it->max_angle_param << "\t" << it->data_i << "\t" << it->Linear << "\t" << it->Constant << "\n";
       }
     }
+    best_change_ptr[data_i] = -1;
     cost_up_to_i.Minimize
       (best_cost_ptr+data_i,
        best_param_ptr+data_i,
        best_change_ptr+data_i);
-  }//while(can read line in text file)
+  }
   return 0;
 }

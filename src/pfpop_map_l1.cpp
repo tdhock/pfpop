@@ -9,7 +9,6 @@
 #include "pfpop_map_l1.h"
 
 #define PREV_NOT_SET (-1)
-#define MAX_ANGLE 360
 
 class ClusterWriter {
 public:
@@ -48,15 +47,8 @@ int pfpop_map_l1
  const double *weight_ptr,
  const int N_data,
  const char *verbose_file,
- double *max_cost_ptr,
- double *max_param_ptr,
- double *max_Linear_ptr,
- double *max_Constant_ptr,
- int *argmax_ptr,
  double *min_cost_ptr,
  double *min_param_ptr,
- double *min_Linear_ptr,
- double *min_Constant_ptr,
  int *argmin_ptr,
  int *map_size_ptr,
  int *list_size_ptr,
@@ -75,16 +67,18 @@ int pfpop_map_l1
   }
   cost_model.cost = 0;
   double cum_weight_i = 0, cum_weight_prev_i = 0;
+  cost_model.min_data = INFINITY;
+  cost_model.max_data = -INFINITY;
   for(int data_i=0; data_i<N_data; data_i++){
-    double angle = degrees_ptr[data_i];
-    if(!std::isfinite(angle)){
+    double data_value = degrees_ptr[data_i];
+    if(!std::isfinite(data_value)){
       return pfpop_map_ERROR_DATA_NOT_FINITE;
     }
-    if(angle<0){
-      return pfpop_map_ERROR_DATA_NEGATIVE;
+    if(data_value < cost_model.min_data){
+      cost_model.min_data = data_value;
     }
-    if(angle >= MAX_ANGLE){
-      return pfpop_map_ERROR_DATA_NOT_LESS_THAN_360;
+    if(data_value > cost_model.max_data){
+      cost_model.max_data = data_value;
     }
     double weight = weight_ptr[data_i];
     if(!std::isfinite(weight)){
@@ -93,6 +87,10 @@ int pfpop_map_l1
     if(weight <= 0){
       return pfpop_map_ERROR_WEIGHT_NOT_POSITIVE;
     }
+  }
+  for(int data_i=0; data_i<N_data; data_i++){
+    double weight = weight_ptr[data_i];
+    double data_value = degrees_ptr[data_i];
     cum_weight_i += weight;
     cost_model.moves = 0;
     cost_model.data_i = data_i;
@@ -104,13 +102,11 @@ int pfpop_map_l1
     // TODO to compute the mean cost instead of the total cost, we
     // divide the penalty by the previous cumsum, and add that to the
     // min-ified constant, before applying the min with constant.
-    cost_model.add_loss_for_data(angle, weight);
+    cost_model.add_loss_for_data(data_value, weight);
+    argmin_ptr[data_i] = -1;
     cost_model.write_min_or_max
       (data_i, -1,
-       min_cost_ptr, min_param_ptr, min_Linear_ptr, min_Constant_ptr, argmin_ptr);
-    cost_model.write_min_or_max
-      (data_i, 1,
-       max_cost_ptr, max_param_ptr, max_Linear_ptr, max_Constant_ptr, argmax_ptr);
+       min_cost_ptr, min_param_ptr, argmin_ptr);
     map_size_ptr[data_i] = cost_model.loss_map.size();
     list_size_ptr[data_i] = cost_model.ptr_list.size();
     num_moves_ptr[data_i] = cost_model.moves;
@@ -125,7 +121,7 @@ double L1LossMapFun::get_param(Coefs &mit){
 
 void L1LossMapFun::write_min_or_max
 (int data_i, int sign,
- double *best, double *param, double *Linear, double *Constant, int *arg
+ double *best, double *param, int *arg
  ){
   best[data_i] = -INFINITY * sign;
   for
@@ -136,8 +132,6 @@ void L1LossMapFun::write_min_or_max
     if(sign*cost > sign*best[data_i]){
       best[data_i] = cost;
       if(param)param[data_i] = get_param_or_mid(*it);
-      if(Linear)Linear[data_i] = it->opt.Linear;
-      if(Constant)Constant[data_i] = it->opt.Constant;
       if(arg)arg[data_i] = it->data_i;
     }
   }
@@ -149,8 +143,8 @@ int sgn(double x){
   return 0;
 }
 
-void L1LossMapFun::add_loss_for_data(double angle_, double weight_){
-  angle = angle_;
+void L1LossMapFun::add_loss_for_data(double data_value_, double weight_){
+  data_value = data_value_;
   weight = weight_;
   step = 1;//add/update breaks
   pieces();
@@ -237,21 +231,6 @@ void L1LossMapFun::all_pointers(){
 
 double L1LossMapFun::get_param_or_mid(const Cluster cl){
   return(get_param(cl.opt.it));
-  if(cl.opt.Linear!=0)return(get_param(cl.opt.it));
-  if(cl.opt.it == loss_map.end())return INFINITY;
-  double last_param, first_param;
-  if(cl.opt.it == loss_map.begin()){
-    L1LossMap::iterator last_it = loss_map.end();
-    last_it--;
-    last_param = get_param(last_it);
-    first_param = get_param(cl.opt.it) + MAX_ANGLE;
-  }else{
-    L1LossMap::iterator prev_it = cl.opt.it;
-    prev_it--;
-    last_param = get_param(cl.opt.it);
-    first_param = get_param(prev_it);
-  }
-  return (last_param+first_param)/2;
 }
 
 double L1LossMapFun::get_cost_at_coefs(const Coefs coefs){
@@ -283,13 +262,15 @@ void L1LossMapFun::piece
   Constant=Constant_*weight;
   min_param=min_param_;
   max_param=max_param_;
-  double diff_Linear_at_min = (min_param==0 && max_param != MAX_ANGLE/2) ? 0 : 2*Linear;
+  double diff_Linear_at_min = (Linear>0) ? 2*Linear : 0; // only add bkpt for piece after min.
+  printf("diff_Linear_at_min=%f\n", diff_Linear_at_min);
   if(step==1 && diff_Linear_at_min){//insert or update bkpt in map
     std::pair<L1LossMap::iterator, bool> result;
     result = loss_map.insert(std::pair<double,double>(min_param, 0));
     L1LossMap::iterator insert_it = result.first;
     insert_it->second += diff_Linear_at_min;
-    if(ptr_list.size()<2){
+    if(ptr_list.size()<1){
+      printf("ptr list size=%d\n", ptr_list.size());
       Cluster new_cl;
       new_cl.opt.Linear = 0;
       new_cl.opt.Constant = cost;
@@ -298,6 +279,7 @@ void L1LossMapFun::piece
       new_cl.sign = sgn(insert_it->second);
       new_cl.data_i = data_i-1;//?
       ptr_list.push_back(new_cl);
+      printf("ptr list size=%d\n", ptr_list.size());
     }
   }
   if(step==2){
@@ -305,7 +287,7 @@ void L1LossMapFun::piece
     update_coefs(cluster_it->opt);
     update_coefs(cluster_it->last);
   }
-  if(step==4 && diff_Linear_at_min){//delete break if diff_linear=0.
+  if(step==4){//delete break if diff_linear=0.
     L1LossMap::iterator it = loss_map.find(min_param);
     if(it->second==0){
       loss_map.erase(it);
@@ -404,10 +386,6 @@ void L1LossMapFun::move_left(Coefs &mit){
   double param_before=get_param(mit);
   double cost_before = get_cost_at_coefs(mit);
   double ldiff = get_Linear_diff(mit);
-  if(mit.it == loss_map.begin()){
-    mit.it = loss_map.end();
-    param_before += MAX_ANGLE;
-  }
   mit.it--;
   mit.Linear -= ldiff;
   mit.Constant = cost_before - mit.Linear*param_before;
@@ -416,10 +394,6 @@ void L1LossMapFun::move_left(Coefs &mit){
 
 void L1LossMapFun::move_right(Coefs &mit){
   mit.it++;
-  if(mit.it == loss_map.end()){
-    mit.it = loss_map.begin();
-    mit.Constant += mit.Linear*MAX_ANGLE;
-  }
   double param_after=get_param(mit);
   double cost_after = mit.Linear*param_after+mit.Constant;
   mit.Linear += get_Linear_diff(mit);
@@ -433,21 +407,8 @@ double L1LossMapFun::get_param(L1LossMap::iterator it){
 }
 
 void L1LossMapFun::pieces(){
-  if(angle == 0){
-    piece(1, 0, 0, MAX_ANGLE/2);
-    piece(-1, MAX_ANGLE, MAX_ANGLE/2, MAX_ANGLE);
-  }else if(angle < MAX_ANGLE/2){
-    piece(-1, angle, 0, angle);
-    piece(1, -angle, angle, angle+MAX_ANGLE/2);
-    piece(-1, (MAX_ANGLE+angle), angle+MAX_ANGLE/2, MAX_ANGLE);
-  }else if(angle == MAX_ANGLE/2){
-    piece(-1, MAX_ANGLE/2, 0, MAX_ANGLE/2);
-    piece(1, -MAX_ANGLE/2, MAX_ANGLE/2, MAX_ANGLE);
-  }else{
-    piece(1, MAX_ANGLE-angle, 0, angle-MAX_ANGLE/2);
-    piece(-1, angle, angle-MAX_ANGLE/2, angle);
-    piece(1, -angle, angle, MAX_ANGLE);
-  }
+  piece(-1, data_value, min_data, data_value);
+  piece(1, -data_value, data_value, max_data);
 }
 
 double L1LossMapFun::get_Linear_diff(Coefs &mit){
@@ -604,10 +565,6 @@ CrossInfo L1LossMapFun::crossing_before(Coefs coefs){
   }
   cinfo.before = coefs;
   cinfo.param = (Constant-coefs.Constant)/coefs.Linear;
-  if(cinfo.param>=MAX_ANGLE){
-    cinfo.param -= MAX_ANGLE;
-    //cinfo.before.Constant -= MAX_ANGLE*cinfo.before.Linear;//TODO
-  }
   return cinfo;
 }
 

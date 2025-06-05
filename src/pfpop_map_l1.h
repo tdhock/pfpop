@@ -12,9 +12,6 @@
 
 int pfpop_map_l1
 (const double*, const double, const double*, const int, const char*, 
- double*, double*,
- double*, double*, int*,//max
- double*, double*,
  double*, double*, int*,//min
  int*, int*, int*);
 
@@ -50,7 +47,7 @@ public:
   ClusterList ptr_list, new_list;
   ClusterList::iterator cluster_it;
   double Linear,Constant,min_param,max_param,weight,angle;
-  double cost;
+  double cost, min_data, max_data, data_value;
   int step, moves, data_i;
   L1LossMapFun();
   void all_pointers();
@@ -60,7 +57,7 @@ public:
   void move_right(Coefs&);
   void move_right_if_zero(Coefs&);
   void move_if_zero(move_it_fun_ptr,Coefs&);
-  void write_min_or_max(int,int,double*,double*,double*,double*,int*);
+  void write_min_or_max(int,int,double*,double*,int*);
   void maybe_move_right(Cluster&,L1LossMap::iterator);
   void maybe_move_erase(L1LossMap::iterator);
   void piece(double,double,double,double);
@@ -88,6 +85,3 @@ public:
   void move_right(L1LossMap::iterator&,Cluster*);
   CrossInfo crossing_before(Coefs);
 };
-
-
-
