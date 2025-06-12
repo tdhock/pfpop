@@ -1,32 +1,26 @@
 library(testthat)
-test_that("param is 1.5", {
-  (result <- pfpop::pfpop(c(1,1.5,3), Inf))
-  expect_equal(result$segments$param, 1.5)
+devtools::load_all("~/R/pfpop")
+library(pfpop)
+test_that("default is not verbose", {
+  data_vec <- c(355,365,375)
+  penalty <- Inf
+  result <- pfpop_list_l1(data_vec, penalty)
+  expect_identical(result$iterations$param[3], 365)
+  result <- pfpop_map_l1(data_vec, penalty)
+  expect_identical(result$list_result, NULL)
+  expect_identical(result$clusters, NULL)
+  expect_identical(result$breaks, NULL)
+  expect_equal(nrow(result$iterations), length(data_vec))
+  result <- pfpop_list_l1(data_vec, penalty)
+  expect_identical(result$model, NULL)
+  expect_equal(nrow(result$iterations), length(data_vec))
 })
-test_that("param is 0.1", {
-  (result <- pfpop::pfpop(c(0.1,1,359), Inf))
-  expect_equal(result$segments$param, 0.1)
-})
-test_that("param is 359", {
-  (result <- pfpop::pfpop(c(358,1,359), Inf))
-  expect_equal(result$segments$param, 359)
-})
-test_that("param is same as data", {
-  angle.vec <- c(0.1, 6, 6.1, 6.2, 3, 3.1, 2.9)
-  (result <- pfpop::pfpop(angle.vec, 0))
-  expect_equal(result$segments$param, angle.vec)
-})
-test_that("params for reasonable penalties", {
-  angle.vec <- c(0.1, 359, 359.5, 3, 3.1, 2.9)
-  (result <- pfpop::pfpop(angle.vec, 1))
-  expect_equal(result$segments$param, c(359.5,3))
-  (result <- pfpop::pfpop(angle.vec, 0.001))
-  expect_equal(result$segments$param, angle.vec)
-  (result <- pfpop::pfpop(angle.vec, 1000))
-  expect_equal(nrow(result$segments),1)
-})
-test_that("pieces disappear", {
-  fit <- pfpop::pfpop(c(0,180,0,180),Inf)
-  expect_equal(fit$iterations$cost, c(0,90,60,90))
-  expect_equal(fit$iterations$pieces, c(2,1,2,1))
+test_that("verbose ok", {
+  data_vec <- c(40,50,60)
+  penalty <- Inf
+  result <- pfpop_map_l1_verbose(data_vec, penalty)
+  plot(result)
+  model0 <- result$list_result$model[data_i==0]
+  expect_equal(model0$min_param, 40)
+  expect_equal(model0$max_param, 60)
 })
