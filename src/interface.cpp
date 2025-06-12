@@ -16,9 +16,9 @@ Rcpp::List pfpop_map_l1_interface
   if(N_data != weight_vec.length()){
     Rcpp::stop("data_vec and weight_vec lengths must be equal");
   }
-  Rcpp::NumericVector min_cost_vec(N_data);
-  Rcpp::NumericVector min_param_vec(N_data);
-  Rcpp::IntegerVector argmin_vec(N_data);
+  Rcpp::NumericVector cost_vec(N_data);
+  Rcpp::NumericVector param_vec(N_data);
+  Rcpp::IntegerVector change_vec(N_data);
   Rcpp::IntegerVector map_size_vec(N_data);
   Rcpp::IntegerVector list_size_vec(N_data);
   Rcpp::IntegerVector num_moves_vec(N_data);
@@ -29,9 +29,9 @@ Rcpp::List pfpop_map_l1_interface
      N_data,
      verbose_file.c_str(),
      //Inputs above, outputs below.
-     &min_cost_vec[0],
-     &min_param_vec[0],
-     &argmin_vec[0],
+     &cost_vec[0],
+     &param_vec[0],
+     &change_vec[0],
      &map_size_vec[0],
      &list_size_vec[0],
      &num_moves_vec[0]);
@@ -45,24 +45,18 @@ Rcpp::List pfpop_map_l1_interface
     Rcpp::stop("error code %d", status);
   }
   // Decoding the cost_model_vec, and writing to the output matrices.
-  int N_segs = pfpop_decode
-    (&argmin_vec[0],
-     &min_cost_vec[0],
-     &min_param_vec[0],
-     N_data,    
-     0, 0, 0, 0);
+  int N_segs = pfpop_decode_size(&change_vec[0], N_data);
   Rcpp::IntegerVector seg_start_vec(N_segs);
   Rcpp::IntegerVector seg_end_vec(N_segs);
   Rcpp::NumericVector seg_param_vec(N_segs);
-  int ignored = pfpop_decode
-    (&argmin_vec[0],
-     &min_cost_vec[0],
-     &min_param_vec[0],
+  pfpop_decode
+    (&change_vec[0],
+     &param_vec[0],
      N_data,
+     N_segs,
      &seg_start_vec[0],
      &seg_end_vec[0],
-     &seg_param_vec[0],
-     N_segs);
+     &seg_param_vec[0]);
   return Rcpp::List::create
     (Rcpp::Named
      ("segments", Rcpp::DataFrame::create
@@ -71,9 +65,9 @@ Rcpp::List pfpop_map_l1_interface
        Rcpp::Named("param", seg_param_vec))),
      Rcpp::Named
      ("iterations", Rcpp::DataFrame::create
-      (Rcpp::Named("min_cost", min_cost_vec),
-       Rcpp::Named("min_param", min_param_vec),
-       Rcpp::Named("argmin", argmin_vec),
+      (Rcpp::Named("cost", cost_vec),
+       Rcpp::Named("param", param_vec),
+       Rcpp::Named("change", change_vec),
        Rcpp::Named("map_size", map_size_vec),
        Rcpp::Named("list_size", list_size_vec),
        Rcpp::Named("num_moves", num_moves_vec))));
@@ -120,24 +114,18 @@ Rcpp::List pfpop_list_l1_interface
     Rcpp::stop("error code %d", status);
   }
   // Decoding the cost_model_vec, and writing to the output matrices.
-  int N_segs = pfpop_decode
-    (&best_change_vec[0],
-     &best_cost_vec[0],
-     &best_param_vec[0],
-     N_data,
-     0, 0, 0, 0);
+  int N_segs = pfpop_decode_size(&best_change_vec[0], N_data);
   Rcpp::IntegerVector seg_start_vec(N_segs);
   Rcpp::IntegerVector seg_end_vec(N_segs);
   Rcpp::NumericVector seg_param_vec(N_segs);
-  int ignored = pfpop_decode
+  pfpop_decode
     (&best_change_vec[0],
-     &best_cost_vec[0],
      &best_param_vec[0],
      N_data,
+     N_segs,
      &seg_start_vec[0],
      &seg_end_vec[0],
-     &seg_param_vec[0],
-     N_segs);
+     &seg_param_vec[0]);
   return Rcpp::List::create
     (Rcpp::Named
      ("segments", Rcpp::DataFrame::create
@@ -146,8 +134,8 @@ Rcpp::List pfpop_list_l1_interface
        Rcpp::Named("param", seg_param_vec))),
      Rcpp::Named
      ("iterations", Rcpp::DataFrame::create
-      (Rcpp::Named("best_change", best_change_vec),
-       Rcpp::Named("best_cost", best_cost_vec),
-       Rcpp::Named("best_param", best_param_vec),
+      (Rcpp::Named("cost", best_cost_vec),
+       Rcpp::Named("param", best_param_vec),
+       Rcpp::Named("change", best_change_vec),
        Rcpp::Named("num_pieces", num_pieces_vec))));
 }

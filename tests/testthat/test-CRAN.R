@@ -5,7 +5,7 @@ test_that("default is not verbose", {
   data_vec <- c(355,365,375)
   penalty <- Inf
   result <- pfpop_list_l1(data_vec, penalty)
-  expect_identical(result$iterations$best_param[3], 365)
+  expect_identical(result$iterations$param[3], 365)
   result <- pfpop_map_l1(data_vec, penalty)
   expect_identical(result$list_result, NULL)
   expect_identical(result$clusters, NULL)
